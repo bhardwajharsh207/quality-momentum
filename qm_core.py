@@ -699,25 +699,33 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
     pct126 = uni_ret126.rank(pct=True)
     bench63 = ret(bench, 63)
 
-    cands, evals = [], []
+    cands, evals, status = [], [], {}
+    first_fail = lambda rules: next((f"{r['rule']} {r['name']}" for r in rules if r["ok"] is not True), "")
     for w in passed.to_dict("records"):
         t = w["ticker"]
         d = px.get(t)
         if d is None or len(d) < 260:
+            status[t] = {"stage": "no price data"}
             continue
         r126, r63 = ret(d, 126), ret(d, 63)
         t_rules, s50 = trend_rules(d, pct126.get(t), r63, bench63, cfg)
         w.update({"ret126": r126, "excess63": r63 - bench63})
         evals.append(w)
-        if not _passes(t_rules, True):
-            continue
         close = float(d["Close"].iloc[-1])
         v_rules = valuation_rules(close, w, cfg)
+        status[t] = {"close": round(close, 2), "rs_pct": pct126.get(t), "pe": v_rules[0]["value"],
+                     "peg": v_rules[2]["value"]}
+        if not _passes(t_rules, True):
+            status[t]["stage"] = "waiting: trend - " + first_fail(t_rules)
+            continue
         if v_rules[-1]["ok"] is False:
+            status[t]["stage"] = "waiting: valuation - " + first_fail(v_rules)
             continue
         setup = entry_setup(d, s50, cfg)
         if not setup:
+            status[t]["stage"] = "in trend, waiting for breakout/pullback entry"
             continue
+        status[t]["stage"] = "SIGNAL: " + setup["setup"]
         cands.append({**w, "close": close, "setup": setup,
                       "proof": json.loads(w.get("rules") or "[]") + t_rules + v_rules})
 
@@ -784,10 +792,79 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
         "watchlist_added": " ".join(wl_added[:50]) if old_pass else "",
         "watchlist_removed": " ".join(wl_removed[:50]),
         "notes": stale_note}], ["session"])
+    write_sheet_rows(cfg, bar_date, fetched_at, len(universe), passed, buys, exits, stop_updates,
+                     missed, wl_added if old_pass else [], wl_removed, stale_note, status,
+                     int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0)
     state["last_bar_date"] = str(bar_date)
     save_state(cfg, state)
     log(report)
     return path
+
+
+SHEET_HEADERS = {
+    "Runs": ["Market", "Session", "Run at", "Universe", "Watchlist", "Buys", "Exits", "Stop updates",
+             "Skipped signals", "Missing fundamentals", "Watchlist added", "Watchlist removed", "Notes", "Report"],
+    "Signals": ["Market", "Session", "Ticker", "Sector", "Setup", "Setup detail", "Score", "Quality score",
+                "Growth score", "Momentum score", "Last close", "Limit (max entry)", "Stop", "Disaster stop",
+                "Shares", "Value", "ROCE/ROE avg", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
+                "6m return pctile", "P/E", "PEG", "Unverified rules", "Manual checks", "Report"],
+    "Position actions": ["Market", "Session", "Ticker", "Action", "Last close", "Entry", "P&L %", "Detail"],
+    "Skipped signals": ["Market", "Session", "Ticker", "Setup", "Score", "Reason skipped"],
+    "Watchlist": ["Market", "Session", "Ticker", "Sector", "Status today", "Last close", "ROCE/ROE avg",
+                  "OCF/Profit", "Debt/Equity", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
+                  "6m return pctile", "P/E", "PEG", "Next results", "Unverified rules"],
+}
+
+
+def _num(v, nd=4):
+    try:
+        if v is None or (isinstance(v, float) and math.isnan(v)):
+            return ""
+        return round(float(v), nd)
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits, stop_updates, missed,
+                     wl_added, wl_removed, notes, status, n_no_data):
+    """Rows to append to the Google Sheet, one list per tab, saved as data/<market>/sheet_rows/<session>.json."""
+    import os
+    m, sess = cfg.market.upper(), str(bar_date)
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    link = f"https://github.com/{repo}/blob/main/reports/{cfg.market}/{sess}.md" if repo else ""
+    rows = {k: [] for k in SHEET_HEADERS}
+    rows["Runs"].append([m, sess, fetched_at, n_universe, len(passed), len(buys), len(exits), len(stop_updates),
+                         len(missed), n_no_data, " ".join(wl_added[:60]), " ".join(wl_removed[:60]), notes, link])
+    for b in buys:
+        s, st = b["size"], status.get(b["ticker"], {})
+        rows["Signals"].append([
+            m, sess, b["ticker"], b["sector"], b["setup"]["setup"], b["setup"]["detail"], _num(b["score"], 3),
+            _num(b["score_quality"], 3), _num(b["score_growth"], 3), _num(b["score_momentum"], 3),
+            _num(b["close"], 2), _num(b["setup"]["limit"], 2), _num(s["stop"], 2),
+            _num(b["close"] * (1 - cfg.disaster_stop_pct), 2), s["shares"], _num(s["value"], 0),
+            _num(b.get("quality_metric")), _num(b.get("q_sales_yoy")), _num(b.get("q_profit_yoy")),
+            _num(b.get("accel")), _num(st.get("rs_pct"), 3), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
+            b.get("unverified") or "", "; ".join(cfg.manual_checks), link])
+    for e in exits:
+        rows["Position actions"].append([m, sess, e["ticker"], "EXIT", _num(e["close"], 2), _num(e["entry"], 2),
+                                         _num(e["pnl_pct"] * 100, 2), e["reason"]])
+    for u in stop_updates:
+        rows["Position actions"].append([m, sess, u["ticker"], "STOP UPDATE", "", "", "",
+                                         f"{u['old']:.2f} -> {u['new']:.2f}: {u['why']}"])
+    for x in missed:
+        rows["Skipped signals"].append([m, sess, x["ticker"], x["setup"], x["score"], x["reason"]])
+    for w in passed.sort_values("ticker").to_dict("records"):
+        st = status.get(w["ticker"], {})
+        rows["Watchlist"].append([
+            m, sess, w["ticker"], w.get("sector", ""), st.get("stage", ""), _num(st.get("close"), 2),
+            _num(w.get("quality_metric")), _num(w.get("ocf_np"), 2), _num(w.get("de"), 2),
+            _num(w.get("q_sales_yoy")), _num(w.get("q_profit_yoy")), _num(w.get("accel")),
+            _num(st.get("rs_pct"), 3), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
+            str(w.get("next_earnings") or "") if not pd.isna(w.get("next_earnings")) else "",
+            w.get("unverified") or ""])
+    out = cfg.data_dir / "sheet_rows"
+    out.mkdir(exist_ok=True)
+    (out / f"{sess}.json").write_text(json.dumps({"headers": SHEET_HEADERS, "rows": rows}, default=str, indent=1))
 
 
 def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, held_notes,
