@@ -8,32 +8,17 @@ Implements the "Quality Momentum: Daily Run Spec". Two scripts share one rules e
 | `us_scan.py` | S&P 500 universe, benchmark S&P 500 (`^GSPC`), prices in $ |
 | `qm_core.py` | All rules: watchlist (Layer A), signals (Layer B), position checks (Layer C), report |
 
-## Setup (once)
+## Where it runs
 
-```bash
-cd quality-momentum
-python3 -m pip install -r requirements.txt
-python3 india_scan.py --rebuild     # first run builds the watchlist: ~15-30 min
-python3 us_scan.py --rebuild
-```
+Everything runs on GitHub Actions in this repo; nothing is needed on a laptop.
 
-Edit capital (`capital`) and number of stocks (`n_stocks`) at the bottom of each script, or pass
-`--capital 25000 --n 3` on the command line.
-
-## Schedule (cron, Mac or Linux)
-
-Run `crontab -e` and add:
-
-```
-0  * * * * cd ~/quality-momentum && python3 us_scan.py --hours 7-11 --hours-tz America/Los_Angeles >> us.log 2>&1
-30 * * * * cd ~/quality-momentum && python3 india_scan.py --hours 7-11 --hours-tz Asia/Kolkata >> india.log 2>&1
-```
-
-Cron starts each script every hour; `--hours` lets it through only at 7, 8, 9, 10 and 11 AM on weekdays in that
-time zone (the India line fires at :30 Seattle time, which is :00 in India all year). The first attempt that
-succeeds writes the report; later attempts that morning see the session is done and exit in seconds. A failed
-attempt (network, Yahoo outage) changes nothing, so the next hour retries. Use the full path to python3
-(`which python3`) if cron can't find it.
+- `India scan`: weekdays at about 7, 8, 9, 10 and 11 AM IST. `US scan`: the same hours, Pacific time.
+  The first attempt that finds a new session writes the report; later attempts exit in seconds;
+  a failed attempt changes nothing, so the next hour retries.
+- Reports and state are committed back to `reports/` and `data/`.
+- Manual run: Actions tab, pick a workflow, "Run workflow" (args `--force` to redo a session,
+  `--rebuild` for a fresh watchlist).
+- Edit capital (`capital`) and number of stocks (`n_stocks`) at the bottom of each script.
 
 ## Daily use
 
