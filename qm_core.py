@@ -776,6 +776,14 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
                            int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0)
     path = cfg.report_dir / f"{bar_date}.md"
     path.write_text(report)
+    append_csv(cfg.data_dir / "runs.csv", [{
+        "session": str(bar_date), "run_at": fetched_at, "universe": len(universe),
+        "watchlist": len(passed), "buys": len(buys), "exits": len(exits),
+        "stop_updates": len(stop_updates), "skipped_signals": len(missed),
+        "missing_fundamentals": int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0,
+        "watchlist_added": " ".join(wl_added[:50]) if old_pass else "",
+        "watchlist_removed": " ".join(wl_removed[:50]),
+        "notes": stale_note}], ["session"])
     state["last_bar_date"] = str(bar_date)
     save_state(cfg, state)
     log(report)
