@@ -810,7 +810,8 @@ SHEET_HEADERS = {
                 "6m return pctile", "P/E", "PEG", "Unverified rules", "Manual checks", "Report"],
     "Position actions": ["Market", "Session", "Ticker", "Action", "Last close", "Entry", "P&L %", "Detail"],
     "Skipped signals": ["Market", "Session", "Ticker", "Setup", "Score", "Reason skipped"],
-    "Watchlist": ["Market", "Session", "Ticker", "Sector", "Status today", "Last close", "ROCE/ROE avg",
+    "Watchlist": ["Market", "Session", "Ticker", "Sector", "Status today", "Why it's great / what to check next",
+                  "Last close", "ROCE/ROE avg",
                   "OCF/Profit", "Debt/Equity", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
                   "6m return pctile", "P/E", "PEG", "Next results", "Unverified rules"],
 }
@@ -823,6 +824,60 @@ def _num(v, nd=4):
         return round(float(v), nd)
     except (TypeError, ValueError):
         return str(v)
+
+
+TREND_HINTS = {
+    "4.1": "Price is below its 50/200-day averages: wait for it to climb back above both",
+    "4.2": "Long-term (200-day) trend still pointing down: wait for it to turn up",
+    "4.3": "Uptrend isn't a fresh one: wait for a new base or a clean pullback",
+    "4.4": "Hasn't risen enough off its 1-year low yet",
+    "4.5": "Too far below its 1-year high: needs to recover more first",
+    "4.6": "Has lagged most stocks over 6 months: wait for it to start leading",
+    "4.7": "Lagging the index over 3 months: wait for it to outperform",
+}
+
+
+def layman_note(cfg, w, st, bar_date):
+    """Short plain-language bullets: why the business qualifies, and what to watch before buying."""
+    why, nxt = [], []
+    q = w.get("quality_metric")
+    if q not in (None, "") and not pd.isna(q):
+        label = "ROE" if w.get("is_financial") in (True, "True") else "ROCE"
+        why.append(f"Earns ~{q * 100:.0f} on every 100 of capital ({label} {q:.0%})")
+    gs, gp = w.get("q_sales_yoy"), w.get("q_profit_yoy")
+    if gs is not None and gp is not None and not pd.isna(gs) and not pd.isna(gp):
+        why.append(f"Last quarter: sales +{gs:.0%}, profit +{gp:.0%} vs a year ago")
+    o, d = w.get("ocf_np"), w.get("de")
+    if o is not None and not pd.isna(o) and o >= 1:
+        why.append("Profits convert fully into cash")
+    if d is not None and d != "" and not pd.isna(d) and float(d) < 0.1:
+        why.append("Almost no debt")
+    peg = st.get("peg")
+    if peg is not None and not pd.isna(peg):
+        if peg < 1:
+            why.append(f"Cheap for its growth (PEG {peg:.1f})")
+        elif peg > 2:
+            nxt.append(f"Pricey for its growth (PEG {peg:.1f}): be patient on entry")
+    stage = st.get("stage", "")
+    if stage.startswith("SIGNAL"):
+        nxt.insert(0, "Buy setup triggered today: see the Signals tab")
+    elif stage.startswith("in trend"):
+        nxt.insert(0, "Uptrend confirmed: watch for a high-volume breakout or a dip to the 50-day average")
+    elif stage.startswith("waiting: valuation"):
+        nxt.insert(0, "Trend is fine but the price is rich vs its own history")
+    elif stage.startswith("waiting: trend"):
+        rule = stage.split(" - ")[-1].split(" ")[0]
+        nxt.insert(0, TREND_HINTS.get(rule, "Wait for the price trend to improve"))
+    ne = w.get("next_earnings")
+    try:
+        ned = pd.Timestamp(ne).date() if ne not in (None, "") and not pd.isna(ne) else None
+    except Exception:
+        ned = None
+    if ned and 0 <= (ned - bar_date).days <= 21:
+        nxt.append(f"Results due {ned}: check that growth holds")
+    if cfg.market == "india":
+        nxt.append("Check promoter pledge & holding on Screener")
+    return "WHY: " + "; ".join(why[:4]) + "\nNEXT: " + "; ".join(nxt[:3])
 
 
 def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits, stop_updates, missed,
@@ -856,7 +911,8 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits,
     for w in passed.sort_values("ticker").to_dict("records"):
         st = status.get(w["ticker"], {})
         rows["Watchlist"].append([
-            m, sess, w["ticker"], w.get("sector", ""), st.get("stage", ""), _num(st.get("close"), 2),
+            m, sess, w["ticker"], w.get("sector", ""), st.get("stage", ""), layman_note(cfg, w, st, bar_date),
+            _num(st.get("close"), 2),
             _num(w.get("quality_metric")), _num(w.get("ocf_np"), 2), _num(w.get("de"), 2),
             _num(w.get("q_sales_yoy")), _num(w.get("q_profit_yoy")), _num(w.get("accel")),
             _num(st.get("rs_pct"), 3), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
