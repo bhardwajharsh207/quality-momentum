@@ -87,7 +87,9 @@ class Config:
     # Housekeeping
     watchlist_max_age_days: int = 7
     strict_missing: bool = False     # True: missing fundamental data fails a rule
-    workers: int = 4
+    workers: int = 2
+    refetch_cap: int = 150           # max no-data stocks re-fetched per daily run
+    probe_tickers: tuple = ()        # liquid stocks used to date the latest session
     base_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parent)
 
     @property
@@ -138,12 +140,16 @@ class YahooSource:
         for key, attr in [("info", "info"), ("annual_is", "income_stmt"),
                           ("annual_bs", "balance_sheet"), ("annual_cf", "cashflow"),
                           ("q_is", "quarterly_income_stmt")]:
-            for attempt in range(3):
+            for wait in (0, 5, 20, 60):         # back off when Yahoo rate-limits
+                time.sleep(wait)
                 try:
-                    f[key] = getattr(tk, attr)
-                    break
+                    val = getattr(tk, attr)
                 except Exception:
-                    time.sleep(2 * (attempt + 1))
+                    continue
+                empty = (not val) if key == "info" else (val is None or getattr(val, "empty", True))
+                f[key] = val
+                if not empty:
+                    break
         try:
             cal = tk.calendar or {}
             dates = cal.get("Earnings Date") or []
@@ -204,12 +210,15 @@ def _fmt(v, pct=False):
     return str(v)
 
 
+CORE_RULES = {"2.1", "2.2", "2.4", "2.5", "3.1", "3.2"}   # missing data on these = fail
 PCT_RULES = {"2.2", "2.2b", "2.3", "2.3/2.10", "2.4", "2.5", "3.1", "3.2", "3.3", "3.4"}
 
 
 def _passes(rules, strict_missing):
     for r in rules:
-        if r["ok"] is False or (r["ok"] is None and strict_missing):
+        if r["ok"] is False:
+            return False
+        if r["ok"] is None and (strict_missing or r["rule"] in CORE_RULES):
             return False
     return True
 
@@ -336,6 +345,7 @@ def evaluate_fundamentals(cfg: Config, ticker: str, sector: str, f: dict,
 
     return {
         "ticker": ticker, "sector": sector, "is_financial": is_fin, "is_cyclical": is_cyc,
+        "no_data": not info.get("marketCap") and years == 0,
         "passed": _passes(rules, cfg.strict_missing), "unverified": ",".join(_unverified(rules)),
         "quality_metric": quality_metric, "ocf_np": ocf_np, "de": de,
         "q_sales_yoy": last(rev_yoy), "q_profit_yoy": last(np_yoy), "accel": accel,
@@ -357,11 +367,13 @@ def build_watchlist(cfg: Config, src, universe: pd.DataFrame, prices: dict,
     results = []
 
     def work(r):
+        time.sleep(0.5)
         try:
             f = src.fundamentals(r.ticker)
             return evaluate_fundamentals(cfg, r.ticker, r.sector, f, prices.get(r.ticker))
         except Exception as e:  # keep going; record the failure
-            return {"ticker": r.ticker, "sector": r.sector, "passed": False, "unverified": f"error: {e}"}
+            return {"ticker": r.ticker, "sector": r.sector, "passed": False, "no_data": True,
+                    "unverified": f"error: {e}"}
 
     with cf.ThreadPoolExecutor(max_workers=cfg.workers) as ex:
         for i, res in enumerate(ex.map(work, rows.itertuples(index=False)), 1):
@@ -548,24 +560,31 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
     fetched_at = dt.datetime.now(ZoneInfo(cfg.tz)).strftime("%Y-%m-%d %H:%M %Z")
     state = load_state(cfg)
 
-    # Universe (0.2), cached weekly
+    # Ages come from state.json, not file times (a fresh git checkout resets file times)
+    def age_days(key):
+        stamp = state.get(key)
+        return 999 if not stamp else (dt.date.today() - dt.date.fromisoformat(stamp)).days
+
+    # Universe (0.2), refreshed weekly
     uni_path = cfg.data_dir / "universe.csv"
-    if rebuild or not uni_path.exists() or \
-            time.time() - uni_path.stat().st_mtime > cfg.watchlist_max_age_days * 86400:
+    if rebuild or not uni_path.exists() or age_days("universe_loaded") >= cfg.watchlist_max_age_days:
         try:
             universe = cfg.universe_loader()
             universe.to_csv(uni_path, index=False)
+            state["universe_loaded"] = str(dt.date.today())
         except Exception as e:
             if not uni_path.exists():
                 raise RuntimeError(f"Could not load universe and no cache exists: {e}")
             log(f"Universe download failed ({e}); using cached list.")
     universe = pd.read_csv(uni_path, dtype=str)
+    probes = list(cfg.probe_tickers) or list(universe.ticker[:5])
 
-    # Quick check on the benchmark alone, so retry attempts after a good run exit in seconds
+    # Quick check on a few liquid stocks, so retry attempts after a good run exit in seconds
     if not force and state.get("last_bar_date"):
-        b = _drop_unfinished_bar(cfg, src.prices([cfg.benchmark], period="1mo"))
-        if cfg.benchmark in b and str(b[cfg.benchmark].index[-1].date()) == state["last_bar_date"]:
-            log(f"No new session since {state['last_bar_date']}; nothing to do (use --force to re-run).")
+        b = _drop_unfinished_bar(cfg, src.prices(probes, period="1mo"))
+        last = max((d.index[-1].date() for d in b.values()), default=None)
+        if last is not None and str(last) == state["last_bar_date"]:
+            log(f"No new session since {last}; nothing to do (use --force to re-run).")
             return None
 
     # Prices for universe + benchmark + held positions
@@ -576,36 +595,60 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
     if cfg.benchmark not in px:
         raise RuntimeError(f"No benchmark data for {cfg.benchmark}")
     bench = px[cfg.benchmark]
-    bar_date = bench.index[-1].date()
+
+    # Session date = the most common latest date across the universe (index feeds can lag)
+    last_dates = pd.Series([px[t].index[-1] for t in universe.ticker if t in px])
+    if last_dates.empty:
+        raise RuntimeError("No price data for the universe")
+    ref_ts = last_dates.mode().max()
+    bar_date = ref_ts.date()
+    ref = next(px[t] for t in probes + list(universe.ticker) if t in px and px[t].index[-1] == ref_ts)
+    bars = ref.index
 
     # 0.7 / 0.8 idempotence and calendar
     if state.get("last_bar_date") == str(bar_date) and not force:
         log(f"No new session since {bar_date}; nothing to do (use --force to re-run).")
         return None
+    notes = []
     stale_days = (dt.datetime.now(ZoneInfo(cfg.tz)).date() - bar_date).days
-    stale_note = f"Latest data is {stale_days} days old; check for a data delay." if stale_days > 4 else ""
-    bars = bench.index
+    if stale_days > 4:
+        notes.append(f"Latest data is {stale_days} days old; check for a data delay.")
+    if bench.index[-1].date() < bar_date:
+        notes.append(f"Benchmark {cfg.benchmark} data ends {bench.index[-1].date()}; "
+                     "relative-strength rule 4.7 uses that date.")
+    stale_note = " ".join(notes)
 
     # ---------------- Layer A ---------------- #
     wl_path = cfg.data_dir / "watchlist_full.csv"
-    need_full = rebuild or not wl_path.exists() or \
-        time.time() - wl_path.stat().st_mtime > cfg.watchlist_max_age_days * 86400
+    need_full = rebuild or not wl_path.exists() or age_days("watchlist_built") >= cfg.watchlist_max_age_days
     old_wl = pd.read_csv(wl_path) if wl_path.exists() else pd.DataFrame()
     old_pass = set(old_wl[old_wl.passed == True].ticker) if len(old_wl) else set()
     if need_full:
-        wl = build_watchlist(cfg, src, universe, px, log=log)
+        fresh = build_watchlist(cfg, src, universe, px, log=log)
+        # If Yahoo returned nothing for a stock this time, keep its last good evaluation
+        if len(old_wl) and "no_data" in old_wl:
+            keep = old_wl[(old_wl.no_data != True) &
+                          old_wl.ticker.isin(fresh.ticker[fresh.no_data == True])]
+            fresh = pd.concat([fresh[~fresh.ticker.isin(keep.ticker)], keep], ignore_index=True)
+        wl = fresh
+        state["watchlist_built"] = str(dt.date.today())
     else:
         wl = old_wl
-        # Refresh stocks whose results came out since they were last fetched
+        # Refresh stocks that just reported results, plus stocks Yahoo returned no data for
         due = []
         if "next_earnings" in wl and len(wl):
             ne = pd.to_datetime(wl["next_earnings"], errors="coerce").dt.date
             fa = pd.to_datetime(wl["fetched_at"], errors="coerce").dt.date
             due = list(wl.ticker[(ne <= bar_date) & (fa <= ne)])
+        if "no_data" in wl:
+            due += list(wl.ticker[wl.no_data == True])[:cfg.refetch_cap]
+        due = sorted(set(due))
         if due:
-            log(f"[Layer A] {len(due)} stocks reported results; refreshing ...")
+            log(f"[Layer A] refreshing {len(due)} stocks (new results or missing data) ...")
             fresh = build_watchlist(cfg, src, universe, px, only=due, log=log)
-            wl = pd.concat([wl[~wl.ticker.isin(due)], fresh], ignore_index=True)
+            keep_old = wl[wl.ticker.isin(fresh.ticker[fresh.no_data == True]) & (wl.get("no_data") != True)]
+            fresh = fresh[~fresh.ticker.isin(keep_old.ticker)]
+            wl = pd.concat([wl[~wl.ticker.isin(fresh.ticker)], fresh], ignore_index=True)
     wl.to_csv(wl_path, index=False)
     passed = wl[wl.passed == True].copy()
     passed.drop(columns=["rules"], errors="ignore").to_csv(cfg.data_dir / "watchlist.csv", index=False)
@@ -729,7 +772,8 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
 
     # ---------------- Report (section 12) ---------------- #
     report = render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, held_notes,
-                           wl_added, wl_removed, len(passed), len(universe), missed, stale_note, need_full)
+                           wl_added, wl_removed, len(passed), len(universe), missed, stale_note, need_full,
+                           int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0)
     path = cfg.report_dir / f"{bar_date}.md"
     path.write_text(report)
     state["last_bar_date"] = str(bar_date)
@@ -739,11 +783,13 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
 
 
 def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, held_notes,
-                  wl_added, wl_removed, n_watch, n_universe, missed, stale_note, rebuilt):
+                  wl_added, wl_removed, n_watch, n_universe, missed, stale_note, rebuilt, n_no_data=0):
     cur = cfg.currency
     L = [f"# {cfg.market.upper()} Quality Momentum - signals from {bar_date} close", "",
          f"Data: {src.name}, fetched {fetched_at}. Universe {n_universe} stocks; "
-         f"watchlist {n_watch} ({'rebuilt today' if rebuilt else 'cached'}).", ""]
+         f"watchlist {n_watch} ({'rebuilt today' if rebuilt else 'cached'})."
+         + (f" Fundamentals still missing for {n_no_data} stocks; they are retried each run." if n_no_data else ""),
+         ""]
     if stale_note:
         L += [f"> {stale_note}", ""]
     if not (buys or exits or stop_updates):

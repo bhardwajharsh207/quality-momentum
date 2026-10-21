@@ -47,6 +47,7 @@ CONFIG = Config(
     close_time=dt.time(15, 30),
     min_mcap=5_000 * 1e7,           # ₹5,000 crore
     universe_loader=load_universe,
+    probe_tickers=("RELIANCE.NS", "HDFCBANK.NS", "INFY.NS", "TCS.NS"),
     financial_sectors=("Financial Services",),
     cyclical_sectors=("Metals & Mining", "Realty", "Oil Gas & Consumable Fuels"),
     manual_checks=(

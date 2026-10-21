@@ -35,6 +35,7 @@ CONFIG = Config(
     close_time=dt.time(16, 0),
     min_mcap=5e9,                   # $5B
     universe_loader=load_universe,
+    probe_tickers=("AAPL", "MSFT", "JPM", "XOM"),
     financial_sectors=("Financials",),
     cyclical_sectors=("Materials", "Energy", "Real Estate"),
     manual_checks=(),
