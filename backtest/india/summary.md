@@ -1,4 +1,4 @@
-# Backtest: INDIA, 2025-10-13 to 2026-10-19
+# Backtest: INDIA, 2024-04-03 to 2026-10-19
 
 Universe 495 stocks (today's members). Today's watchlist: 30 stocks.
 
@@ -6,21 +6,21 @@ Universe 495 stocks (today's members). Today's watchlist: 30 stocks.
 
 | layer | observations | avg_60d_return_pct | median_60d_return_pct | pct_beating_benchmark |
 |---|---|---|---|---|
-| Every stock, every day | 93198 | 2.41 | -0.24 | 51.8 |
-| Passes trend template (4.x) | 3152 | 3.02 | -0.14 | 51.7 |
-| Trend + entry setup = signal (no fundamentals) | 116 | 2.66 | 0.58 | 49.1 |
-| Signal on today's watchlist (look-ahead) | 7 | -4.39 | -11.4 | 42.9 |
+| Every stock, every day | 265896 | 3.05 | 0.6 | 49.1 |
+| Passes trend template (4.x) | 9157 | 3.24 | 0.33 | 47.9 |
+| Trend + entry setup = signal (no fundamentals) | 318 | 3.52 | 0.96 | 48.7 |
+| Signal on today's watchlist (look-ahead) | 19 | 0.32 | -0.48 | 52.6 |
 
 ## Every signal as its own trade (exit rules applied, % costs deducted)
 
-- **All signals:** trades 150, win_rate 29%, avg_win 14.3%, avg_loss -7.0%, payoff 2.02, avg_trade -0.94%
-- **Signals on today's watchlist (look-ahead):** trades 8, win_rate 38%, avg_win 9.3%, avg_loss -6.5%, payoff 1.44, avg_trade -0.56%
-- Signals skipped by the gap rule (11.6): 5
-- Exit reasons: 9.1 stop 89, 9.5 time stop 30, 9.3 weekly close < 50DMA 28, 9.1 breakeven stop 3
+- **All signals:** trades 352, win_rate 38%, avg_win 14.4%, avg_loss -6.9%, payoff 2.09, avg_trade 1.08%
+- **Signals on today's watchlist (look-ahead):** trades 20, win_rate 40%, avg_win 11.9%, avg_loss -5.1%, payoff 2.31, avg_trade 1.66%
+- Signals skipped by the gap rule (11.6): 12
+- Exit reasons: 9.1 stop 181, 9.5 time stop 94, 9.3 weekly close < 50DMA 72, 9.1 breakeven stop 5
 
 ## Portfolio: 3 slots, max 2 new/day, equal weight
 
-- Strategy +12.8% vs benchmark -5.4%; max drawdown -14.3%; 17 closed trades, 2 still open.
+- Strategy +108.4% vs benchmark +7.0%; max drawdown -29.0%; 47 closed trades, 2 still open.
 - No fundamental gate in this simulation, so it understates what the full rules aim for.
 
 ## Caveats
