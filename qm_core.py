@@ -605,6 +605,12 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
     ref = next(px[t] for t in probes + list(universe.ticker) if t in px and px[t].index[-1] == ref_ts)
     bars = ref.index
 
+    # Never go backwards: stale data from Yahoo must not overwrite a newer session
+    last_done = state.get("last_bar_date")
+    if last_done and bar_date < dt.date.fromisoformat(last_done):
+        raise RuntimeError(f"Fetched data ends {bar_date}, older than the last processed session {last_done}. "
+                           "Yahoo returned stale data; the next attempt will retry.")
+
     # 0.7 / 0.8 idempotence and calendar
     if state.get("last_bar_date") == str(bar_date) and not force:
         log(f"No new session since {bar_date}; nothing to do (use --force to re-run).")
