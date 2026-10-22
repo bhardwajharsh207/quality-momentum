@@ -831,8 +831,27 @@ SHEET_HEADERS = {
                   "vs competitors (sector peers in index)", "Next: what to check",
                   "Last close", "ROCE/ROE avg",
                   "OCF/Profit", "Debt/Equity", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
-                  "6m return pctile", "P/E", "PEG", "Next results", "Unverified rules"],
+                  "6m return pctile", "P/E", "PEG", "Next results", "Unverified rules",
+                  "Screener.in", "Yahoo Finance"],
 }
+# Link columns sit at the end of each tab so rows logged before they existed stay aligned.
+SHEET_HEADERS["Signals"] += ["Screener.in", "Yahoo Finance"]
+
+
+def stock_links(ticker: str) -> tuple[str, str]:
+    """(Screener.in, Yahoo Finance) URLs for a ticker. Screener covers NSE stocks only, so it is blank for US."""
+    from urllib.parse import quote
+    t = str(ticker).strip()
+    screener = ""
+    if t.endswith((".NS", ".BO")):
+        screener = f"https://www.screener.in/company/{quote(t.rsplit('.', 1)[0], safe='')}/"
+    return screener, f"https://finance.yahoo.com/quote/{quote(t, safe='.-^')}/"
+
+
+def _md_ticker(ticker: str) -> str:
+    """Ticker as a markdown link: Screener for India, Yahoo for US."""
+    screener, yahoo = stock_links(ticker)
+    return f"[{ticker}]({screener or yahoo})"
 
 
 def _num(v, nd=4):
@@ -998,7 +1017,7 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits,
             _num(b["close"] * (1 - cfg.disaster_stop_pct), 2), s["shares"], _num(s["value"], 0),
             _num(b.get("quality_metric")), _num(b.get("q_sales_yoy")), _num(b.get("q_profit_yoy")),
             _num(b.get("accel")), _num(st.get("rs_pct"), 3), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
-            b.get("unverified") or "", "; ".join(cfg.manual_checks), link])
+            b.get("unverified") or "", "; ".join(cfg.manual_checks), link, *stock_links(b["ticker"])])
     for e in exits:
         rows["Position actions"].append([m, sess, e["ticker"], "EXIT", _num(e["close"], 2), _num(e["entry"], 2),
                                          _num(e["pnl_pct"] * 100, 2), e["reason"]])
@@ -1017,7 +1036,7 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits,
             _num(w.get("q_sales_yoy")), _num(w.get("q_profit_yoy")), _num(w.get("accel")),
             _num(st.get("rs_pct"), 3), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
             str(w.get("next_earnings") or "") if not pd.isna(w.get("next_earnings")) else "",
-            w.get("unverified") or ""])
+            w.get("unverified") or "", *stock_links(w["ticker"])])
     out = cfg.data_dir / "sheet_rows"
     out.mkdir(exist_ok=True)
     (out / f"{sess}.json").write_text(json.dumps({"headers": SHEET_HEADERS, "rows": rows}, default=str, indent=1))
@@ -1042,7 +1061,7 @@ def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, hel
               "|---|---|---|---|---|---|---|---|---|"]
         for b in buys:
             s = b["size"]
-            L.append(f"| {b['ticker']} | {b['setup']['setup']} | {b['score']:.2f} | {cur}{b['close']:,.2f} | "
+            L.append(f"| {_md_ticker(b['ticker'])} | {b['setup']['setup']} | {b['score']:.2f} | {cur}{b['close']:,.2f} | "
                      f"{cur}{b['setup']['limit']:,.2f} | {cur}{s['stop']:,.2f} | "
                      f"{cur}{b['close'] * (1 - cfg.disaster_stop_pct):,.2f} | {s['shares']} | {cur}{s['value']:,.0f} |")
         L.append("")
@@ -1070,7 +1089,7 @@ def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, hel
     if exits:
         L += ["## EXIT (sell at next open)", "", "| Ticker | Last close | Entry | P&L | Rule |", "|---|---|---|---|---|"]
         for e in exits:
-            L.append(f"| {e['ticker']} | {cur}{e['close']:,.2f} | {cur}{e['entry']:,.2f} | "
+            L.append(f"| {_md_ticker(e['ticker'])} | {cur}{e['close']:,.2f} | {cur}{e['entry']:,.2f} | "
                      f"{e['pnl_pct']:+.1%} | {e['reason']} |")
         L += ["", "Remove the row from positions.csv after selling.", ""]
 
@@ -1086,7 +1105,7 @@ def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, hel
     if wl_added or wl_removed:
         L += ["## WATCHLIST CHANGES", ""]
         if wl_added:
-            L.append(f"- Added ({len(wl_added)}): {', '.join(wl_added[:30])}" + (" ..." if len(wl_added) > 30 else ""))
+            L.append(f"- Added ({len(wl_added)}): {', '.join(_md_ticker(t) for t in wl_added[:30])}" + (" ..." if len(wl_added) > 30 else ""))
         if wl_removed:
             L.append(f"- Removed ({len(wl_removed)}): {', '.join(wl_removed[:30])}" + (" ..." if len(wl_removed) > 30 else ""))
         L.append("")
