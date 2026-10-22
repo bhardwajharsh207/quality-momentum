@@ -40,7 +40,7 @@ def frames(px, tickers):
 
 
 VARIANTS = {
-    "current": "Rules as live today",
+    "current": "Rules as configured for this market",
     "no_fresh": "Fix 1: drop 4.3 (uptrend no longer has to be new)",
     "dip_ok": "Fix 1 + Fix 2: drop 4.3, and allow a dip below the 50DMA while above the 200DMA",
 }
@@ -59,7 +59,7 @@ def trend_mask(F, bench_close, cfg, variant="current"):
     r63 = c / c.shift(63) - 1
     b63 = (bench_close / bench_close.shift(63) - 1).reindex(c.index).ffill()
     hist_ok = c.notna().cumsum() >= 260
-    if variant in ("no_fresh", "dip_ok"):
+    if variant in ("no_fresh", "dip_ok") or not cfg.require_fresh_cross:
         cross65 = pd.DataFrame(True, index=c.index, columns=c.columns)
     price_ok = (c > s200) if variant == "dip_ok" else (c > s50)
     m = (price_ok & (s50 > s200) & (s200 > s200.shift(20)) & cross65 &

@@ -60,6 +60,8 @@ CONFIG = Config(
     # Delivery trades at a discount broker: ~0.24% statutory (STT, exchange, stamp, GST) + ~₹16 DP charge on sell
     cost_pct=0.0024,
     cost_fixed=16,
+    # 4.3 off: backtest 2026-10-21 (30 months) showed ~6x more buys on watchlist stocks, slightly better avg trade
+    require_fresh_cross=False,
 )
 
 if __name__ == "__main__":

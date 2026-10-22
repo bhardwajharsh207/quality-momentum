@@ -83,6 +83,7 @@ class Config:
 
     # Trend (4.x)
     rs_top_pct: float = 0.30
+    require_fresh_cross: bool = True  # 4.3: golden cross within last 65 sessions (False = any uptrend age)
 
     # Housekeeping
     watchlist_max_age_days: int = 7
@@ -399,7 +400,8 @@ def trend_rules(d: pd.DataFrame, rs_pct: float | None, ret63: float, bench63: fl
               "ordered", bool(c.iloc[-1] > s50.iloc[-1] > s200.iloc[-1])),
         _rule("4.2", "200DMA rising (vs 20d ago)", f"{s200.iloc[-1]:.2f} vs {s200.iloc[-21]:.2f}",
               "higher", bool(s200.iloc[-1] > s200.iloc[-21])),
-        _rule("4.3", "50/200 golden cross in last 65d", bool(cross), True, bool(cross)),
+        *([_rule("4.3", "50/200 golden cross in last 65d", bool(cross), True, bool(cross))]
+          if cfg.require_fresh_cross else []),
         _rule("4.4", "Close / 52w low", c.iloc[-1] / lo52, 1.30, bool(c.iloc[-1] >= 1.30 * lo52)),
         _rule("4.5", "Close / 52w high", c.iloc[-1] / hi52, 0.75, bool(c.iloc[-1] >= 0.75 * hi52)),
         _rule("4.6", "6m return percentile", rs_pct, 1 - cfg.rs_top_pct,
