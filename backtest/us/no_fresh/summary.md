@@ -1,0 +1,32 @@
+# Backtest: US, 2024-04-18 to 2026-10-21
+
+Variant: **no_fresh** - Fix 1: drop 4.3 (uptrend no longer has to be new)
+
+Universe 503 stocks (today's members). Today's watchlist: 12 stocks.
+
+## Does each layer pick better stocks? (60-session forward return from next open)
+
+| layer | observations | avg_60d_return_pct | median_60d_return_pct | pct_beating_benchmark |
+|---|---|---|---|---|
+| Every stock, every day | 283985 | 4.59 | 2.75 | 46.1 |
+| Passes trend template (4.x) | 53420 | 4.75 | 1.81 | 44.3 |
+| Trend + entry setup = signal (no fundamentals) | 1404 | 4.68 | 2.48 | 45.6 |
+| Signal on today's watchlist (look-ahead) | 48 | 6.63 | 3.43 | 54.2 |
+
+## Every signal as its own trade (exit rules applied, % costs deducted)
+
+- **All signals:** trades 1487, win_rate 41%, avg_win 14.9%, avg_loss -6.6%, payoff 2.26, avg_trade 2.21%
+- **Signals on today's watchlist (look-ahead):** trades 53, win_rate 43%, avg_win 18.8%, avg_loss -8.1%, payoff 2.34, avg_trade 3.61%
+- Signals skipped by the gap rule (11.6): 45
+- Exit reasons: 9.1 stop 717, 9.5 time stop 447, 9.3 weekly close < 50DMA 297, 9.1 breakeven stop 26
+
+## Portfolio: 3 slots, max 2 new/day, equal weight
+
+- Strategy -13.0% vs benchmark +54.8%; max drawdown -31.0%; 59 closed trades, 0 still open.
+- No fundamental gate in this simulation, so it understates what the full rules aim for.
+
+## Caveats
+
+- Fundamentals (2.x, 3.x, 5.x) cannot be replayed: Yahoo keeps no history of them.
+- Universe is today's index members: stocks that were dropped are missing (flatters results).
+- Fixed costs (e.g. India's ₹16 DP charge) are not deducted; percentage costs are.
