@@ -713,8 +713,14 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
         evals.append(w)
         close = float(d["Close"].iloc[-1])
         v_rules = valuation_rules(close, w, cfg)
+        s200 = d["Close"].rolling(200).mean()
+        base = find_base(d)
         status[t] = {"close": round(close, 2), "rs_pct": pct126.get(t), "pe": v_rules[0]["value"],
-                     "peg": v_rules[2]["value"]}
+                     "peg": v_rules[2]["value"], "pe_rel": v_rules[1]["value"],
+                     "s50": float(s50.iloc[-1]), "s200": float(s200.iloc[-1]), "s200_20": float(s200.iloc[-21]),
+                     "vol50": float(d["Volume"].iloc[-51:-1].mean()),
+                     "pivot": base["pivot"] if base else float(d["High"].iloc[-60:].max()),
+                     "base_len": base["length"] if base else None}
         if not _passes(t_rules, True):
             status[t]["stage"] = "waiting: trend - " + first_fail(t_rules)
             continue
@@ -792,9 +798,10 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
         "watchlist_added": " ".join(wl_added[:50]) if old_pass else "",
         "watchlist_removed": " ".join(wl_removed[:50]),
         "notes": stale_note}], ["session"])
+    peers = sector_peer_stats(wl, px)
     write_sheet_rows(cfg, bar_date, fetched_at, len(universe), passed, buys, exits, stop_updates,
                      missed, wl_added if old_pass else [], wl_removed, stale_note, status,
-                     int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0)
+                     int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0, peers)
     state["last_bar_date"] = str(bar_date)
     save_state(cfg, state)
     log(report)
@@ -810,7 +817,8 @@ SHEET_HEADERS = {
                 "6m return pctile", "P/E", "PEG", "Unverified rules", "Manual checks", "Report"],
     "Position actions": ["Market", "Session", "Ticker", "Action", "Last close", "Entry", "P&L %", "Detail"],
     "Skipped signals": ["Market", "Session", "Ticker", "Setup", "Score", "Reason skipped"],
-    "Watchlist": ["Market", "Session", "Ticker", "Sector", "Status today", "Why it's great / what to check next",
+    "Watchlist": ["Market", "Session", "Ticker", "Sector", "Status today", "Why it's great",
+                  "vs competitors (sector peers in index)", "Next: what to check",
                   "Last close", "ROCE/ROE avg",
                   "OCF/Profit", "Debt/Equity", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
                   "6m return pctile", "P/E", "PEG", "Next results", "Unverified rules"],
@@ -837,51 +845,130 @@ TREND_HINTS = {
 }
 
 
-def layman_note(cfg, w, st, bar_date):
-    """Short plain-language bullets: why the business qualifies, and what to watch before buying."""
-    why, nxt = [], []
+def _ok(v):
+    return v is not None and v != "" and not (isinstance(v, float) and math.isnan(v))
+
+
+def sector_peer_stats(wl, px):
+    """Per stock: how it compares with every other stock in the same sector of the index."""
+    df = wl[wl.get("no_data") != True].copy() if "no_data" in wl else wl.copy()
+    if not len(df):
+        return {}
+    def pe_now(r):
+        d, eps = px.get(r.ticker), r.eps_ttm
+        if d is None or not _ok(eps) or eps <= 0:
+            return np.nan
+        return float(d["Close"].iloc[-1]) / eps
+    df["pe_now"] = [pe_now(r) for r in df.itertuples()]
+    out = {}
+    for sec, g in df.groupby("sector"):
+        n = len(g)
+        rank_q = g["quality_metric"].rank(ascending=False, method="min")
+        rank_g = g["q_profit_yoy"].rank(ascending=False, method="min")
+        med = g[["quality_metric", "q_sales_yoy", "q_profit_yoy", "pe_now", "de"]].median(numeric_only=True)
+        for idx, r in g.iterrows():
+            out[r.ticker] = {"sector": sec, "n": n, "rank_q": rank_q.get(idx), "rank_g": rank_g.get(idx),
+                             "med_q": med.get("quality_metric"), "med_sales": med.get("q_sales_yoy"),
+                             "med_profit": med.get("q_profit_yoy"), "med_pe": med.get("pe_now"),
+                             "med_de": med.get("de"), "pe": r.pe_now}
+    return out
+
+
+def why_text(w, st):
+    why = []
     q = w.get("quality_metric")
-    if q not in (None, "") and not pd.isna(q):
-        label = "ROE" if w.get("is_financial") in (True, "True") else "ROCE"
+    label = "ROE" if w.get("is_financial") in (True, "True") else "ROCE"
+    if _ok(q):
         why.append(f"Earns ~{q * 100:.0f} on every 100 of capital ({label} {q:.0%})")
     gs, gp = w.get("q_sales_yoy"), w.get("q_profit_yoy")
-    if gs is not None and gp is not None and not pd.isna(gs) and not pd.isna(gp):
-        why.append(f"Last quarter: sales +{gs:.0%}, profit +{gp:.0%} vs a year ago")
+    if _ok(gs) and _ok(gp):
+        why.append(f"Latest quarter: sales +{gs:.0%}, profit +{gp:.0%} vs a year ago")
     o, d = w.get("ocf_np"), w.get("de")
-    if o is not None and not pd.isna(o) and o >= 1:
-        why.append("Profits convert fully into cash")
-    if d is not None and d != "" and not pd.isna(d) and float(d) < 0.1:
+    if _ok(o) and o >= 1:
+        why.append("Profits are backed by real cash")
+    if _ok(d) and float(d) < 0.1:
         why.append("Almost no debt")
     peg = st.get("peg")
-    if peg is not None and not pd.isna(peg):
-        if peg < 1:
-            why.append(f"Cheap for its growth (PEG {peg:.1f})")
-        elif peg > 2:
-            nxt.append(f"Pricey for its growth (PEG {peg:.1f}): be patient on entry")
+    if _ok(peg) and peg < 1:
+        why.append(f"Cheap for its growth (PEG {peg:.1f})")
+    return "\n".join("• " + x for x in why)
+
+
+def peers_text(w, pr):
+    if not pr or pr.get("n", 0) < 3:
+        return "Too few sector peers in the index to compare"
+    lab = "ROE" if w.get("is_financial") in (True, "True") else "ROCE"
+    lines = []
+    if _ok(w.get("quality_metric")) and _ok(pr.get("med_q")):
+        lines.append(f"{lab} {w['quality_metric']:.0%} vs sector median {pr['med_q']:.0%} "
+                     f"(#{int(pr['rank_q'])} of {pr['n']})")
+    if _ok(w.get("q_profit_yoy")) and _ok(pr.get("med_profit")):
+        lines.append(f"Profit growth {w['q_profit_yoy']:+.0%} vs sector {pr['med_profit']:+.0%} "
+                     f"(#{int(pr['rank_g'])} of {pr['n']})")
+    if _ok(w.get("q_sales_yoy")) and _ok(pr.get("med_sales")):
+        lines.append(f"Sales growth {w['q_sales_yoy']:+.0%} vs sector {pr['med_sales']:+.0%}")
+    if _ok(pr.get("pe")) and _ok(pr.get("med_pe")):
+        tag = "premium" if pr["pe"] > pr["med_pe"] * 1.1 else ("discount" if pr["pe"] < pr["med_pe"] * 0.9 else "in line")
+        lines.append(f"P/E {pr['pe']:.0f} vs sector {pr['med_pe']:.0f} ({tag})")
+    if _ok(w.get("de")) and _ok(pr.get("med_de")) and w.get("is_financial") not in (True, "True"):
+        lines.append(f"Debt/equity {float(w['de']):.2f} vs sector {pr['med_de']:.2f}")
+    return f"vs {pr['n'] - 1} {pr['sector']} peers in the index:\n" + "\n".join("• " + x for x in lines)
+
+
+def next_text(cfg, w, st, bar_date):
+    cur, nxt = cfg.currency, []
     stage = st.get("stage", "")
+    s50, s200, piv, vol = st.get("s50"), st.get("s200"), st.get("pivot"), st.get("vol50")
+    vol_need = f"{1.5 * vol:,.0f}" if _ok(vol) else "1.5x average"
     if stage.startswith("SIGNAL"):
-        nxt.insert(0, "Buy setup triggered today: see the Signals tab")
+        nxt.append("Buy setup triggered: see the Signals tab for limit, stop and size")
     elif stage.startswith("in trend"):
-        nxt.insert(0, "Uptrend confirmed: watch for a high-volume breakout or a dip to the 50-day average")
+        nxt.append(f"Breakout trigger: close above {cur}{piv:,.0f} on volume > {vol_need} shares")
+        nxt.append(f"Or pullback trigger: dip to ~{cur}{s50:,.0f} (50-day avg), then close above the prior day's high")
     elif stage.startswith("waiting: valuation"):
-        nxt.insert(0, "Trend is fine but the price is rich vs its own history")
-    elif stage.startswith("waiting: trend"):
-        rule = stage.split(" - ")[-1].split(" ")[0]
-        nxt.insert(0, TREND_HINTS.get(rule, "Wait for the price trend to improve"))
+        nxt.append("Trend is fine but valuation fails: wait for the price or the P/E to cool")
+    else:
+        rule = stage.split(" - ")[-1].split(" ")[0] if " - " in stage else ""
+        if rule == "4.1" and _ok(s50) and _ok(s200):
+            nxt.append(f"Trend trigger: close above {cur}{max(s50, s200):,.0f} with the 50-day avg ({cur}{s50:,.0f}) "
+                       f"above the 200-day ({cur}{s200:,.0f})")
+        elif rule == "4.2" and _ok(s200):
+            nxt.append(f"Trend trigger: 200-day avg ({cur}{s200:,.0f}) must start rising "
+                       f"(it was {cur}{st.get('s200_20', 0):,.0f} 20 days ago)")
+        elif rule == "4.3":
+            nxt.append(f"Trend is old, not fresh: wait for a new 6-20 week base; breakout level ~{cur}{piv:,.0f}")
+        elif rule in ("4.4", "4.5", "4.6", "4.7"):
+            nxt.append("Momentum is weak vs other stocks: wait for it to start leading")
+    if _ok(s50) and _ok(st.get("close")):
+        nxt.append(f"If bought near {cur}{st['close']:,.0f}: stop ~{cur}{st['close'] * 0.92:,.0f} (8% below), "
+                   f"target first +15% ({cur}{st['close'] * 1.15:,.0f}) then trail the 50-day avg")
+    peg, eps, g = st.get("peg"), w.get("eps_ttm"), w.get("profit_cagr_3y")
+    if _ok(peg) and peg > 2 and _ok(eps) and _ok(g) and g > 0:
+        nxt.append(f"Pricey: PEG {peg:.1f}. Price for PEG 2 is ~{cur}{2 * g * 100 * eps:,.0f}")
+    elif _ok(st.get("pe_rel")) and st["pe_rel"] > 1.3:
+        nxt.append(f"P/E is {st['pe_rel']:.1f}x its own 5-year median: prefer a dip")
     ne = w.get("next_earnings")
     try:
-        ned = pd.Timestamp(ne).date() if ne not in (None, "") and not pd.isna(ne) else None
+        ned = pd.Timestamp(ne).date() if _ok(ne) else None
     except Exception:
         ned = None
-    if ned and 0 <= (ned - bar_date).days <= 21:
-        nxt.append(f"Results due {ned}: check that growth holds")
+    gp, gs = w.get("q_profit_yoy"), w.get("q_sales_yoy")
+    if ned and 0 <= (ned - bar_date).days <= 30:
+        last = f" (last: sales {gs:+.0%}, profit {gp:+.0%})" if _ok(gp) and _ok(gs) else ""
+        nxt.append(f"Results {ned:%d %b}: want sales growth >= 15% and profit growth >= 20% YoY{last}; "
+                   "a 2nd straight slowdown = skip/exit")
+    o, d = w.get("ocf_np"), w.get("de")
+    if _ok(o) and o < 0.9:
+        nxt.append(f"Cash conversion only {o:.2f}x of profit: check receivables and inventory")
+    if _ok(d) and float(d) > 0.3:
+        nxt.append(f"Debt/equity {float(d):.2f}: check that it isn't rising")
     if cfg.market == "india":
-        nxt.append("Check promoter pledge & holding on Screener")
-    return "WHY: " + "; ".join(why[:4]) + "\nNEXT: " + "; ".join(nxt[:3])
+        nxt.append("Screener: promoter pledge < 5%, promoter holding not down > 2 pts in 4 qtrs; NSE: not in ASM/GSM")
+    return "\n".join("• " + x for x in nxt)
 
 
 def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits, stop_updates, missed,
-                     wl_added, wl_removed, notes, status, n_no_data):
+                     wl_added, wl_removed, notes, status, n_no_data, peers=None):
     """Rows to append to the Google Sheet, one list per tab, saved as data/<market>/sheet_rows/<session>.json."""
     import os
     m, sess = cfg.market.upper(), str(bar_date)
@@ -911,7 +998,8 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits,
     for w in passed.sort_values("ticker").to_dict("records"):
         st = status.get(w["ticker"], {})
         rows["Watchlist"].append([
-            m, sess, w["ticker"], w.get("sector", ""), st.get("stage", ""), layman_note(cfg, w, st, bar_date),
+            m, sess, w["ticker"], w.get("sector", ""), st.get("stage", ""), why_text(w, st),
+            peers_text(w, (peers or {}).get(w["ticker"])), next_text(cfg, w, st, bar_date),
             _num(st.get("close"), 2),
             _num(w.get("quality_metric")), _num(w.get("ocf_np"), 2), _num(w.get("de"), 2),
             _num(w.get("q_sales_yoy")), _num(w.get("q_profit_yoy")), _num(w.get("accel")),
