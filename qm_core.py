@@ -600,6 +600,8 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
     last_dates = pd.Series([px[t].index[-1] for t in universe.ticker if t in px])
     if last_dates.empty:
         raise RuntimeError("No price data for the universe")
+    log("Latest bar dates across universe: " +
+        ", ".join(f"{k.date()}: {v}" for k, v in last_dates.value_counts().sort_index().tail(4).items()))
     ref_ts = last_dates.mode().max()
     bar_date = ref_ts.date()
     ref = next(px[t] for t in probes + list(universe.ticker) if t in px and px[t].index[-1] == ref_ts)

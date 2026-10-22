@@ -30,15 +30,22 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Run scan
+        shell: bash
         run: |
+          mkdir -p logs
+          set -o pipefail
+          {
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python india_scan.py ${{ github.event.inputs.args }}
           else
             python india_scan.py --hours 7-11 --hours-tz Asia/Kolkata
           fi
+          } 2>&1 | tee logs/india-latest.log
       - name: Save reports and state
+        if: always()
         run: |
           git config user.name "quality-momentum-bot"
           git config user.email "actions@users.noreply.github.com"
           git add data/india reports/india 2>/dev/null || true
+          if [ -s logs/india-latest.log ] && ! grep -q '^No new session' logs/india-latest.log; then git add logs/india-latest.log; fi
           git diff --cached --quiet || (git commit -m "India scan $(date -u +%F)" && git pull --rebase && git push)
