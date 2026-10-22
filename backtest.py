@@ -39,7 +39,14 @@ def frames(px, tickers):
     return {k: v.reindex(idx) for k, v in cols.items()}
 
 
-def trend_mask(F, bench_close, cfg):
+VARIANTS = {
+    "current": "Rules as live today",
+    "no_fresh": "Fix 1: drop 4.3 (uptrend no longer has to be new)",
+    "dip_ok": "Fix 1 + Fix 2: drop 4.3, and allow a dip below the 50DMA while above the 200DMA",
+}
+
+
+def trend_mask(F, bench_close, cfg, variant="current"):
     c, h, l = F["Close"], F["High"], F["Low"]
     s50, s200 = c.rolling(50, min_periods=50).mean(), c.rolling(200, min_periods=200).mean()
     above = (s50 > s200).astype(float).where(s200.notna())
@@ -52,7 +59,10 @@ def trend_mask(F, bench_close, cfg):
     r63 = c / c.shift(63) - 1
     b63 = (bench_close / bench_close.shift(63) - 1).reindex(c.index).ffill()
     hist_ok = c.notna().cumsum() >= 260
-    m = ((c > s50) & (s50 > s200) & (s200 > s200.shift(20)) & cross65 &
+    if variant in ("no_fresh", "dip_ok"):
+        cross65 = pd.DataFrame(True, index=c.index, columns=c.columns)
+    price_ok = (c > s200) if variant == "dip_ok" else (c > s50)
+    m = (price_ok & (s50 > s200) & (s200 > s200.shift(20)) & cross65 &
          (c >= 1.30 * lo52) & (c >= 0.75 * hi52) & (pct >= 1 - cfg.rs_top_pct) &
          r63.gt(b63, axis=0) & hist_ok)
     return m.fillna(False), s50, pct
@@ -107,9 +117,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("market", choices=["india", "us"])
     ap.add_argument("--months", type=int, default=12)
+    ap.add_argument("--variant", choices=list(VARIANTS), default="current")
     a = ap.parse_args()
     cfg = load_cfg(a.market)
     out = Path(__file__).resolve().parent / "backtest" / a.market
+    if a.variant != "current":
+        out = out / a.variant
     out.mkdir(parents=True, exist_ok=True)
 
     uni_path = cfg.data_dir / "universe.csv"
@@ -130,7 +143,7 @@ def main():
     test_dates = cal[test_start:]
     print(f"Test window {test_dates[0].date()} to {test_dates[-1].date()} ({len(test_dates)} sessions)")
 
-    trend, s50_all, mom_pct = trend_mask(F, bench, cfg)
+    trend, s50_all, mom_pct = trend_mask(F, bench, cfg, a.variant)
 
     # ---- signals and per-signal trades (each stock: one open trade at a time, cooldown after stop) ----
     trades = []
@@ -260,6 +273,7 @@ def main():
     bench_ret = E["benchmark"].iloc[-1] - 1
     dd = (E["strategy"] / E["strategy"].cummax() - 1).min()
     lines = [f"# Backtest: {a.market.upper()}, {test_dates[0].date()} to {test_dates[-1].date()}", "",
+             f"Variant: **{a.variant}** - {VARIANTS[a.variant]}", "",
              f"Universe {len(c.columns)} stocks (today's members). Today's watchlist: {len(watch)} stocks.", "",
              "## Does each layer pick better stocks? (60-session forward return from next open)", "",
              md_table(L), "",
