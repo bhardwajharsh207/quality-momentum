@@ -939,9 +939,11 @@ def next_text(cfg, w, st, bar_date):
             nxt.append(f"Trend is old, not fresh: wait for a new 6-20 week base; breakout level ~{cur}{piv:,.0f}")
         elif rule in ("4.4", "4.5", "4.6", "4.7"):
             nxt.append("Momentum is weak vs other stocks: wait for it to start leading")
-    if _ok(s50) and _ok(st.get("close")):
-        nxt.append(f"If bought near {cur}{st['close']:,.0f}: stop ~{cur}{st['close'] * 0.92:,.0f} (8% below), "
-                   f"target first +15% ({cur}{st['close'] * 1.15:,.0f}) then trail the 50-day avg")
+    if (stage.startswith("SIGNAL") or stage.startswith("in trend")) and _ok(st.get("close")):
+        nxt.append(f"Risk plan if entered near {cur}{st['close']:,.0f}: stop no lower than {cur}{st['close'] * 0.92:,.0f} "
+                   f"(-8%); at +15% ({cur}{st['close'] * 1.15:,.0f}) move stop to entry, then trail the 50-day avg")
+    elif stage.startswith("waiting"):
+        nxt.append("Not buyable yet: no entry until the trigger above is met")
     peg, eps, g = st.get("peg"), w.get("eps_ttm"), w.get("profit_cagr_3y")
     if _ok(peg) and peg > 2 and _ok(eps) and _ok(g) and g > 0:
         nxt.append(f"Pricey: PEG {peg:.1f}. Price for PEG 2 is ~{cur}{2 * g * 100 * eps:,.0f}")
