@@ -1,0 +1,11 @@
+Downloading prices for 504 tickers ...
+Latest bar dates across universe: 2026-10-20: 502, 2026-10-21: 1
+Traceback (most recent call last):
+  File "/home/runner/work/quality-momentum/quality-momentum/us_scan.py", line 49, in <module>
+    cli(CONFIG)
+  File "/home/runner/work/quality-momentum/quality-momentum/qm_core.py", line 1117, in cli
+    path = run(cfg, rebuild=a.rebuild, force=a.force)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/quality-momentum/quality-momentum/qm_core.py", line 613, in run
+    raise RuntimeError(f"Fetched data ends {bar_date}, older than the last processed session {last_done}. "
+RuntimeError: Fetched data ends 2026-10-20, older than the last processed session 2026-10-21. Yahoo returned stale data; the next attempt will retry.
