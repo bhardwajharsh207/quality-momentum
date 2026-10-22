@@ -42,7 +42,9 @@
    "PEG",
    "Unverified rules",
    "Manual checks",
-   "Report"
+   "Report",
+   "Screener.in",
+   "Yahoo Finance"
   ],
   "Position actions": [
    "Market",
@@ -68,7 +70,9 @@
    "Ticker",
    "Sector",
    "Status today",
-   "Why it's great / what to check next",
+   "Why it's great",
+   "vs competitors (sector peers in index)",
+   "Next: what to check",
    "Last close",
    "ROCE/ROE avg",
    "OCF/Profit",
@@ -80,7 +84,9 @@
    "P/E",
    "PEG",
    "Next results",
-   "Unverified rules"
+   "Unverified rules",
+   "Screener.in",
+   "Yahoo Finance"
   ]
  },
  "rows": {
@@ -88,15 +94,15 @@
    [
     "US",
     "2026-10-21",
-    "2026-10-21 19:53 EDT",
+    "2026-10-22 14:00 EDT",
     503,
-    12,
+    13,
     0,
     0,
     0,
     0,
     0,
-    "",
+    "ISRG",
     "",
     "",
     "https://github.com/bhardwajharsh207/quality-momentum/blob/main/reports/us/2026-10-21.md"
@@ -112,7 +118,9 @@
     "ANET",
     "Information Technology",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~27 on every 100 of capital (ROCE 27%); Last quarter: sales +38%, profit +36% vs a year ago; Profits convert fully into cash; Almost no debt\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Results due 2026-11-03: check that growth holds",
+    "\u2022 Earns ~27 on every 100 of capital (ROCE 27%)\n\u2022 Latest quarter: sales +38%, profit +36% vs a year ago\n\u2022 Profits are backed by real cash\n\u2022 Almost no debt",
+    "vs 73 Information Technology peers in the index:\n\u2022 ROCE 27% vs sector median 16% (#15 of 74)\n\u2022 Profit growth +36% vs sector +36% (#35 of 74)\n\u2022 Sales growth +38% vs sector +22%\n\u2022 P/E 58 vs sector 36 (premium)\n\u2022 Debt/equity 0.00 vs sector 0.45",
+    "\u2022 Trend trigger: close above $198 with the 50-day avg ($198) above the 200-day ($163)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 03 Nov: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +38%, profit +36%); a 2nd straight slowdown = skip/exit",
     184.33,
     0.2734,
     1.08,
@@ -124,7 +132,9 @@
     58.1,
     1.55,
     "2026-11-03",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/ANET/"
    ],
    [
     "US",
@@ -132,7 +142,9 @@
     "BX",
     "Financials",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~28 on every 100 of capital (ROE 28%); Last quarter: sales +32%, profit +61% vs a year ago; Profits convert fully into cash\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Results due 2026-10-22: check that growth holds",
+    "\u2022 Earns ~28 on every 100 of capital (ROE 28%)\n\u2022 Latest quarter: sales +32%, profit +61% vs a year ago\n\u2022 Profits are backed by real cash",
+    "vs 75 Financials peers in the index:\n\u2022 ROE 28% vs sector median 12% (#9 of 76)\n\u2022 Profit growth +61% vs sector +17% (#8 of 76)\n\u2022 Sales growth +32% vs sector +11%\n\u2022 P/E 25 vs sector 15 (premium)",
+    "\u2022 Trend trigger: close above $126 with the 50-day avg ($126) above the 200-day ($124)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 22 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +32%, profit +61%); a 2nd straight slowdown = skip/exit",
     109.57,
     0.2797,
     2.07,
@@ -144,7 +156,9 @@
     24.5,
     1.23,
     "2026-10-22",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/BX/"
    ],
    [
     "US",
@@ -152,7 +166,9 @@
     "EME",
     "Industrials",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~32 on every 100 of capital (ROCE 32%); Last quarter: sales +20%, profit +34% vs a year ago; Profits convert fully into cash; Cheap for its growth (PEG 0.5)\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Results due 2026-10-29: check that growth holds",
+    "\u2022 Earns ~32 on every 100 of capital (ROCE 32%)\n\u2022 Latest quarter: sales +20%, profit +34% vs a year ago\n\u2022 Profits are backed by real cash\n\u2022 Cheap for its growth (PEG 0.5)",
+    "vs 80 Industrials peers in the index:\n\u2022 ROCE 32% vs sector median 15% (#12 of 81)\n\u2022 Profit growth +34% vs sector +11% (#17 of 81)\n\u2022 Sales growth +20% vs sector +10%\n\u2022 P/E 22 vs sector 28 (discount)\n\u2022 Debt/equity 0.13 vs sector 0.75",
+    "\u2022 Trend trigger: close above $781 with the 50-day avg ($765) above the 200-day ($781)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 29 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +20%, profit +34%); a 2nd straight slowdown = skip/exit",
     699.17,
     0.3184,
     1.24,
@@ -164,7 +180,9 @@
     21.8,
     0.47,
     "2026-10-29",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/EME/"
    ],
    [
     "US",
@@ -172,7 +190,9 @@
     "FICO",
     "Information Technology",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~63 on every 100 of capital (ROCE 63%); Last quarter: sales +26%, profit +30% vs a year ago; Profits convert fully into cash\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Results due 2026-11-04: check that growth holds",
+    "\u2022 Earns ~63 on every 100 of capital (ROCE 63%)\n\u2022 Latest quarter: sales +26%, profit +30% vs a year ago\n\u2022 Profits are backed by real cash",
+    "vs 73 Information Technology peers in the index:\n\u2022 ROCE 63% vs sector median 16% (#1 of 74)\n\u2022 Profit growth +30% vs sector +36% (#39 of 74)\n\u2022 Sales growth +26% vs sector +22%\n\u2022 P/E 23 vs sector 36 (discount)",
+    "\u2022 Trend trigger: close above $1,154 with the 50-day avg ($923) above the 200-day ($1,154)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 04 Nov: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +26%, profit +30%); a 2nd straight slowdown = skip/exit",
     795.21,
     0.6255,
     1.21,
@@ -184,7 +204,9 @@
     23.0,
     1.13,
     "2026-11-04",
-    "2.6,3.3"
+    "2.6,3.3",
+    "",
+    "https://finance.yahoo.com/quote/FICO/"
    ],
    [
     "US",
@@ -192,7 +214,9 @@
     "FIX",
     "Industrials",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~29 on every 100 of capital (ROCE 29%); Last quarter: sales +50%, profit +91% vs a year ago; Profits convert fully into cash; Cheap for its growth (PEG 0.6)\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Results due 2026-10-22: check that growth holds",
+    "\u2022 Earns ~29 on every 100 of capital (ROCE 29%)\n\u2022 Latest quarter: sales +50%, profit +91% vs a year ago\n\u2022 Profits are backed by real cash\n\u2022 Cheap for its growth (PEG 0.6)",
+    "vs 80 Industrials peers in the index:\n\u2022 ROCE 29% vs sector median 15% (#14 of 81)\n\u2022 Profit growth +91% vs sector +11% (#7 of 81)\n\u2022 Sales growth +50% vs sector +10%\n\u2022 P/E 34 vs sector 28 (premium)\n\u2022 Debt/equity 0.20 vs sector 0.75",
+    "\u2022 Trend trigger: close above $1,629 with the 50-day avg ($1,629) above the 200-day ($1,596)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 22 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +50%, profit +91%); a 2nd straight slowdown = skip/exit",
     1401.27,
     0.2917,
     1.41,
@@ -204,7 +228,9 @@
     34.5,
     0.57,
     "2026-10-22",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/FIX/"
    ],
    [
     "US",
@@ -212,7 +238,9 @@
     "GOOG",
     "Communication Services",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~29 on every 100 of capital (ROCE 29%); Last quarter: sales +24%, profit +298% vs a year ago; Profits convert fully into cash; Cheap for its growth (PEG 0.6)\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Results due 2026-10-28: check that growth holds",
+    "\u2022 Earns ~29 on every 100 of capital (ROCE 29%)\n\u2022 Latest quarter: sales +24%, profit +298% vs a year ago\n\u2022 Profits are backed by real cash\n\u2022 Cheap for its growth (PEG 0.6)",
+    "vs 21 Communication Services peers in the index:\n\u2022 ROCE 29% vs sector median 9% (#2 of 22)\n\u2022 Profit growth +298% vs sector +1% (#1 of 22)\n\u2022 Sales growth +24% vs sector +11%\n\u2022 P/E 17 vs sector 18 (in line)\n\u2022 Debt/equity 0.14 vs sector 0.87",
+    "\u2022 Trend trigger: close above $340 with the 50-day avg ($340) above the 200-day ($339)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 28 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +24%, profit +298%); a 2nd straight slowdown = skip/exit",
     330.95,
     0.2918,
     1.32,
@@ -224,7 +252,9 @@
     16.6,
     0.55,
     "2026-10-28",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/GOOG/"
    ],
    [
     "US",
@@ -232,7 +262,9 @@
     "GOOGL",
     "Communication Services",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~29 on every 100 of capital (ROCE 29%); Last quarter: sales +24%, profit +298% vs a year ago; Profits convert fully into cash; Cheap for its growth (PEG 0.6)\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Results due 2026-10-28: check that growth holds",
+    "\u2022 Earns ~29 on every 100 of capital (ROCE 29%)\n\u2022 Latest quarter: sales +24%, profit +298% vs a year ago\n\u2022 Profits are backed by real cash\n\u2022 Cheap for its growth (PEG 0.6)",
+    "vs 21 Communication Services peers in the index:\n\u2022 ROCE 29% vs sector median 9% (#2 of 22)\n\u2022 Profit growth +298% vs sector +1% (#1 of 22)\n\u2022 Sales growth +24% vs sector +11%\n\u2022 P/E 17 vs sector 18 (in line)\n\u2022 Debt/equity 0.14 vs sector 0.87",
+    "\u2022 Trend trigger: close above $344 with the 50-day avg ($344) above the 200-day ($341)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 28 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +24%, profit +298%); a 2nd straight slowdown = skip/exit",
     334.76,
     0.2918,
     1.32,
@@ -244,7 +276,33 @@
     16.8,
     0.56,
     "2026-10-28",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/GOOGL/"
+   ],
+   [
+    "US",
+    "2026-10-21",
+    "ISRG",
+    "Health Care",
+    "waiting: trend - 4.1 Close > 50DMA > 200DMA",
+    "\u2022 Earns ~14 on every 100 of capital (ROCE 14%)\n\u2022 Latest quarter: sales +19%, profit +24% vs a year ago\n\u2022 Profits are backed by real cash\n\u2022 Almost no debt",
+    "vs 59 Health Care peers in the index:\n\u2022 ROCE 14% vs sector median 12% (#22 of 60)\n\u2022 Profit growth +24% vs sector +12% (#21 of 60)\n\u2022 Sales growth +19% vs sector +7%\n\u2022 P/E 52 vs sector 29 (premium)\n\u2022 Debt/equity 0.00 vs sector 0.70",
+    "\u2022 Trend trigger: close above $438 with the 50-day avg ($394) above the 200-day ($438)\n\u2022 Not buyable yet: no entry until the trigger above is met",
+    428.12,
+    0.1406,
+    1.05,
+    0.0,
+    0.1854,
+    0.2426,
+    "",
+    0.178,
+    51.8,
+    1.77,
+    "2027-01-21",
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/ISRG/"
    ],
    [
     "US",
@@ -252,7 +310,9 @@
     "LRCX",
     "Information Technology",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~39 on every 100 of capital (ROCE 39%); Last quarter: sales +30%, profit +32% vs a year ago; Profits convert fully into cash\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Pricey for its growth (PEG 2.6): be patient on entry; Results due 2026-10-21: check that growth holds",
+    "\u2022 Earns ~39 on every 100 of capital (ROCE 39%)\n\u2022 Latest quarter: sales +30%, profit +32% vs a year ago\n\u2022 Profits are backed by real cash",
+    "vs 73 Information Technology peers in the index:\n\u2022 ROCE 39% vs sector median 16% (#4 of 74)\n\u2022 Profit growth +32% vs sector +36% (#37 of 74)\n\u2022 Sales growth +30% vs sector +22%\n\u2022 P/E 39 vs sector 36 (in line)\n\u2022 Debt/equity 0.30 vs sector 0.45",
+    "\u2022 Trend trigger: close above $306 with the 50-day avg ($306) above the 200-day ($283)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Pricey: PEG 2.3. Price for PEG 2 is ~$231\n\u2022 Results 21 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +30%, profit +32%); a 2nd straight slowdown = skip/exit",
     260.81,
     0.393,
     1.04,
@@ -261,10 +321,12 @@
     0.3239,
     "",
     0.38,
-    45.3,
-    2.63,
+    38.9,
+    2.26,
     "2026-10-21",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/LRCX/"
    ],
    [
     "US",
@@ -272,7 +334,9 @@
     "MCO",
     "Financials",
     "waiting: trend - 4.2 200DMA rising (vs 20d ago)",
-    "WHY: Earns ~55 on every 100 of capital (ROE 55%); Last quarter: sales +15%, profit +52% vs a year ago; Profits convert fully into cash\nNEXT: Long-term (200-day) trend still pointing down: wait for it to turn up; Results due 2026-10-21: check that growth holds",
+    "\u2022 Earns ~55 on every 100 of capital (ROE 55%)\n\u2022 Latest quarter: sales +15%, profit +52% vs a year ago\n\u2022 Profits are backed by real cash",
+    "vs 75 Financials peers in the index:\n\u2022 ROE 55% vs sector median 12% (#3 of 76)\n\u2022 Profit growth +52% vs sector +17% (#12 of 76)\n\u2022 Sales growth +15% vs sector +11%\n\u2022 P/E 31 vs sector 15 (premium)",
+    "\u2022 Trend trigger: 200-day avg ($467) must start rising (it was $471 20 days ago)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 21 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +15%, profit +52%); a 2nd straight slowdown = skip/exit",
     481.05,
     0.5534,
     1.25,
@@ -284,7 +348,9 @@
     30.5,
     1.43,
     "2026-10-21",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/MCO/"
    ],
    [
     "US",
@@ -292,7 +358,9 @@
     "MPWR",
     "Information Technology",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~22 on every 100 of capital (ROCE 22%); Last quarter: sales +48%, profit +91% vs a year ago; Almost no debt\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both; Pricey for its growth (PEG 6.3): be patient on entry; Results due 2026-10-29: check that growth holds",
+    "\u2022 Earns ~22 on every 100 of capital (ROCE 22%)\n\u2022 Latest quarter: sales +48%, profit +91% vs a year ago\n\u2022 Almost no debt",
+    "vs 73 Information Technology peers in the index:\n\u2022 ROCE 22% vs sector median 16% (#24 of 74)\n\u2022 Profit growth +91% vs sector +36% (#22 of 74)\n\u2022 Sales growth +48% vs sector +22%\n\u2022 P/E 78 vs sector 36 (premium)\n\u2022 Debt/equity 0.01 vs sector 0.45",
+    "\u2022 Trend trigger: close above $1,305 with the 50-day avg ($1,298) above the 200-day ($1,305)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Pricey: PEG 6.3. Price for PEG 2 is ~$408\n\u2022 Results 29 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +48%, profit +91%); a 2nd straight slowdown = skip/exit\n\u2022 Cash conversion only 0.82x of profit: check receivables and inventory",
     1283.32,
     0.2176,
     0.82,
@@ -304,7 +372,9 @@
     78.1,
     6.3,
     "2026-10-29",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/MPWR/"
    ],
    [
     "US",
@@ -312,7 +382,9 @@
     "MSFT",
     "Information Technology",
     "in trend, waiting for breakout/pullback entry",
-    "WHY: Earns ~28 on every 100 of capital (ROCE 28%); Last quarter: sales +18%, profit +31% vs a year ago; Profits convert fully into cash\nNEXT: Uptrend confirmed: watch for a high-volume breakout or a dip to the 50-day average; Results due 2026-10-28: check that growth holds",
+    "\u2022 Earns ~28 on every 100 of capital (ROCE 28%)\n\u2022 Latest quarter: sales +18%, profit +31% vs a year ago\n\u2022 Profits are backed by real cash",
+    "vs 73 Information Technology peers in the index:\n\u2022 ROCE 28% vs sector median 16% (#13 of 74)\n\u2022 Profit growth +31% vs sector +36% (#38 of 74)\n\u2022 Sales growth +18% vs sector +22%\n\u2022 P/E 30 vs sector 36 (discount)\n\u2022 Debt/equity 0.13 vs sector 0.45",
+    "\u2022 Breakout trigger: close above $543 on volume > 32,551,113 shares\n\u2022 Or pullback trigger: dip to ~$507 (50-day avg), then close above the prior day's high\n\u2022 Risk plan if entered near $533: stop no lower than $490 (-8%); at +15% ($613) move stop to entry, then trail the 50-day avg\n\u2022 Results 28 Oct: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +18%, profit +31%); a 2nd straight slowdown = skip/exit",
     532.95,
     0.2833,
     1.33,
@@ -324,7 +396,9 @@
     29.7,
     1.31,
     "2026-10-28",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/MSFT/"
    ],
    [
     "US",
@@ -332,7 +406,9 @@
     "NVDA",
     "Information Technology",
     "waiting: trend - 4.1 Close > 50DMA > 200DMA",
-    "WHY: Earns ~61 on every 100 of capital (ROCE 61%); Last quarter: sales +106%, profit +126% vs a year ago; Almost no debt; Cheap for its growth (PEG 0.1)\nNEXT: Price is below its 50/200-day averages: wait for it to climb back above both",
+    "\u2022 Earns ~61 on every 100 of capital (ROCE 61%)\n\u2022 Latest quarter: sales +106%, profit +126% vs a year ago\n\u2022 Almost no debt\n\u2022 Cheap for its growth (PEG 0.1)",
+    "vs 73 Information Technology peers in the index:\n\u2022 ROCE 61% vs sector median 16% (#3 of 74)\n\u2022 Profit growth +126% vs sector +36% (#18 of 74)\n\u2022 Sales growth +106% vs sector +22%\n\u2022 P/E 28 vs sector 36 (discount)\n\u2022 Debt/equity 0.07 vs sector 0.45",
+    "\u2022 Trend trigger: close above $223 with the 50-day avg ($223) above the 200-day ($203)\n\u2022 Not buyable yet: no entry until the trigger above is met\n\u2022 Results 17 Nov: want sales growth >= 15% and profit growth >= 20% YoY (last: sales +106%, profit +126%); a 2nd straight slowdown = skip/exit\n\u2022 Cash conversion only 0.88x of profit: check receivables and inventory",
     221.97,
     0.6148,
     0.88,
@@ -344,7 +420,9 @@
     28.1,
     0.14,
     "2026-11-17",
-    "3.3"
+    "3.3",
+    "",
+    "https://finance.yahoo.com/quote/NVDA/"
    ]
   ]
  }
