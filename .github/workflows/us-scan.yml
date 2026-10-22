@@ -2,8 +2,9 @@ name: US scan
 
 on:
   schedule:
-    # Hourly on weekdays across 14:00-19:59 UTC; the script itself only runs at 7-11 AM Pacific,
-    # so this stays correct through daylight-saving changes.
+    # Hourly on weekdays 14:02-19:02 UTC. Backup only: GitHub often delays or drops scheduled runs,
+    # so the Claude scheduled task also starts this workflow at :40 each hour 7-11 AM Pacific.
+    # No time-window gate: a run skips sessions already processed and ignores the unfinished bar.
     - cron: "2 14-19 * * 1-5"
   workflow_dispatch:
     inputs:
@@ -39,7 +40,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python us_scan.py ${{ github.event.inputs.args }}
           else
-            python us_scan.py --hours 7-11 --hours-tz America/Los_Angeles
+            python us_scan.py
           fi
           } 2>&1 | tee logs/us-latest.log
       - name: Save reports and state

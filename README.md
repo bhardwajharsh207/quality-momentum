@@ -13,7 +13,8 @@ Implements the "Quality Momentum: Daily Run Spec". Two scripts share one rules e
 Everything runs on GitHub Actions in this repo; nothing is needed on a laptop.
 
 - `India scan`: weekdays at about 7, 8, 9, 10 and 11 AM IST. `US scan`: the same hours, Pacific time.
-  The first attempt that finds a new session writes the report; later attempts exit in seconds;
+  A Claude scheduled task starts each workflow at :40 past those hours (GitHub's own cron is kept
+  only as a backup, since it often runs late or not at all). The first attempt that finds a new session writes the report; later attempts exit in seconds;
   a failed attempt changes nothing, so the next hour retries.
 - Reports and state are committed back to `reports/` and `data/`.
 - Manual run: Actions tab, pick a workflow, "Run workflow" (args `--force` to redo a session,

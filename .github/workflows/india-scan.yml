@@ -2,7 +2,9 @@ name: India scan
 
 on:
   schedule:
-    # 01:32-05:32 UTC = 7:02-11:02 AM IST on weekdays (India has no daylight saving).
+    # 01:32-05:32 UTC = 7:02-11:02 AM IST on weekdays. Backup only: GitHub often delays or drops
+    # scheduled runs, so the Claude scheduled task also starts this workflow at :40 each hour 7-11 AM IST.
+    # No time-window gate: a run skips sessions already processed and ignores the unfinished bar.
     - cron: "32 1-5 * * 1-5"
   workflow_dispatch:
     inputs:
@@ -38,7 +40,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python india_scan.py ${{ github.event.inputs.args }}
           else
-            python india_scan.py --hours 7-11 --hours-tz Asia/Kolkata
+            python india_scan.py
           fi
           } 2>&1 | tee logs/india-latest.log
       - name: Save reports and state
