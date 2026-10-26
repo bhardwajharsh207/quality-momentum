@@ -12,7 +12,8 @@ Implements the "Quality Momentum: Daily Run Spec". Two scripts share one rules e
 
 Everything runs on GitHub Actions in this repo; nothing is needed on a laptop.
 
-- `India scan`: weekdays at about 7, 8, 9, 10 and 11 AM IST. `US scan`: the same hours, Pacific time.
+- Both scans try hourly in the evening after their market closes (India 4:47-11:47 PM IST, US about
+  2-9 PM Pacific), and again at 7-11 AM local the next morning.
   A Claude scheduled task starts each workflow at :40 past those hours (GitHub's own cron is kept
   only as a backup, since it often runs late or not at all). The first attempt that finds a new session writes the report; later attempts exit in seconds;
   a failed attempt changes nothing, so the next hour retries.

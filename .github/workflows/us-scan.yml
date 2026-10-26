@@ -6,6 +6,10 @@ on:
     # so the Claude scheduled task also starts this workflow at :40 each hour 7-11 AM Pacific.
     # No time-window gate: a run skips sessions already processed and ignores the unfinished bar.
     - cron: "2 14-19 * * 1-5"
+    # Main attempts: hourly after the US close, 21:17-04:17 UTC (about 2-9 PM Pacific), Mon-Fri sessions.
+    # Several slots because GitHub drops many scheduled runs; extra ones exit in seconds once done.
+    - cron: "17 21-23 * * 1-5"
+    - cron: "17 0-4 * * 2-6"
   workflow_dispatch:
     inputs:
       args:
