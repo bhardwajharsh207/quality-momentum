@@ -374,18 +374,17 @@ PG,Consumer Staples
 PGR,Financials
 PLD,Real Estate
 PRU,Financials
-PEG,Utilities
 PTC,Information Technology
+PEG,Utilities
 PSA,Real Estate
 PHM,Consumer Discretionary
-PWR,Industrials
-QCOM,Information Technology
-DGX,Health Care
 Q,Information Technology
+QCOM,Information Technology
+PWR,Industrials
+DGX,Health Care
 RL,Consumer Discretionary
 RJF,Financials
 RDDT,Communication Services
-RTX,Industrials
 O,Real Estate
 REG,Real Estate
 REGN,Health Care
@@ -399,6 +398,7 @@ ROL,Industrials
 ROP,Information Technology
 ROST,Consumer Discretionary
 RCL,Consumer Discretionary
+RTX,Industrials
 SPGI,Financials
 CRM,Information Technology
 SNDK,Information Technology
