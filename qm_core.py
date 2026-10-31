@@ -1176,7 +1176,7 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, st
                          " ".join(wl_removed[:60]), notes, link,
                          count("confirmed"), count("emerging"), count("pullback")])
     new_today = set(wl_added)
-    pct = lambda v: _num(v * 100, 1) if _ok(v) else ""
+    pct = lambda v: _num(v, 4) if _ok(v) else ""         # decimals, like the other daily tabs (0.05 = 5%)
     for r in mom:
         w, st, t = r["w"], r["st"], r["ticker"]
         rows["Momentum"].append([
