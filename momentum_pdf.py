@@ -85,7 +85,7 @@ def chart(ax, axv, d, row, cur):
     if cd:
         t = cd[-1]
         ax.axvline(t, color=CROSS, lw=1, ls=":")
-        ax.annotate(f"Golden cross\n{t:%d %b}", (t, float(s50.loc[t])), xytext=(6, -26),
+        ax.annotate(f"Last golden cross\n{t:%d %b}", (t, float(s50.loc[t])), xytext=(6, -26),
                     textcoords="offset points", color=INK2, fontsize=7,
                     arrowprops=dict(arrowstyle="-", color=CROSS, lw=0.8))
     ax.annotate(f"{cur}{c.iloc[-1]:,.0f}", (x[-1], c.iloc[-1]), xytext=(4, 0), textcoords="offset points",
@@ -160,6 +160,11 @@ def cover(pdf, sections, sessions):
         y -= 0.013 * len(wr) + 0.008
     y -= 0.01
     for (title, df) in sections:
+        if y - (0.043 + 0.0122 * len(df)) < 0.04:      # section won't fit: continue on a new page
+            pdf.savefig(fig)
+            plt.close(fig)
+            fig = plt.figure(figsize=(8.27, 11.69))
+            y = 0.94
         fig.text(0.07, y, f"{title}  ({len(df)})", fontsize=10, fontweight="bold", color=INK, va="top")
         y -= 0.018
         hdr = ["Ticker", "Stage", "In stage", "Score", "6m RS", "vs 20DMA", "Entry status"]
@@ -175,11 +180,6 @@ def cover(pdf, sections, sessions):
                 fig.text(xx, y, str(vv), fontsize=7, color=INK, va="top")
             y -= 0.0122
         y -= 0.012
-        if y < 0.06:
-            pdf.savefig(fig)
-            plt.close(fig)
-            fig = plt.figure(figsize=(8.27, 11.69))
-            y = 0.94
     pdf.savefig(fig)
     plt.close(fig)
 
