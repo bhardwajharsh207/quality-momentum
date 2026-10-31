@@ -1,5 +1,5 @@
 layer,observations,avg_60d_return_pct,median_60d_return_pct,pct_beating_benchmark
 "Every stock, every day",284015,4.52,2.65,46.1
-Passes trend template (4.x),53841,4.68,1.71,44.5
-Trend + entry setup = signal (no fundamentals),1562,4.18,1.88,44.8
-Signal on today's watchlist (look-ahead),50,6.66,3.21,52.0
+Passes trend template (4.x),11488,7.19,3.41,47.5
+Trend + entry setup = signal (no fundamentals),431,5.23,2.81,43.9
+Signal on today's watchlist (look-ahead),11,18.62,10.3,54.5

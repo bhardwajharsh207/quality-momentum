@@ -9,20 +9,20 @@ Universe 503 stocks (today's members). Today's watchlist: 11 stocks.
 | layer | observations | avg_60d_return_pct | median_60d_return_pct | pct_beating_benchmark |
 |---|---|---|---|---|
 | Every stock, every day | 284015 | 4.52 | 2.65 | 46.1 |
-| Passes trend template (4.x) | 53841 | 4.68 | 1.71 | 44.5 |
-| Trend + entry setup = signal (no fundamentals) | 1562 | 4.18 | 1.88 | 44.8 |
-| Signal on today's watchlist (look-ahead) | 50 | 6.66 | 3.21 | 52.0 |
+| Passes trend template (4.x) | 11488 | 7.19 | 3.41 | 47.5 |
+| Trend + entry setup = signal (no fundamentals) | 431 | 5.23 | 2.81 | 43.9 |
+| Signal on today's watchlist (look-ahead) | 11 | 18.62 | 10.3 | 54.5 |
 
 ## Every signal as its own trade (exit rules applied, % costs deducted)
 
-- **All signals:** trades 1642, win_rate 38%, avg_win 16.1%, avg_loss -6.4%, payoff 2.52, avg_trade 2.15%
-- **Signals on today's watchlist (look-ahead):** trades 52, win_rate 50%, avg_win 26.7%, avg_loss -7.4%, payoff 3.60, avg_trade 9.63%
-- Signals skipped by the gap rule (11.6): 39
-- Exit reasons: 9.1 stop 859, 9.5 time stop 432, 9.3 weekly close < 50DMA 325, 9.1 breakeven stop 26
+- **All signals:** trades 459, win_rate 41%, avg_win 26.4%, avg_loss -6.7%, payoff 3.93, avg_trade 6.69%
+- **Signals on today's watchlist (look-ahead):** trades 12, win_rate 67%, avg_win 50.7%, avg_loss -5.8%, payoff 8.68, avg_trade 31.83%
+- Signals skipped by the gap rule (11.6): 15
+- Exit reasons: 9.1 stop 239, 9.3 weekly close < 50DMA 108, 9.5 time stop 106, 9.1 breakeven stop 6
 
 ## Portfolio: 3 slots, max 2 new/day, equal weight
 
-- Strategy +26.3% vs benchmark +48.2%; max drawdown -26.6%; 46 closed trades, 1 still open.
+- Strategy +195.3% vs benchmark +48.2%; max drawdown -21.9%; 43 closed trades, 0 still open.
 - No fundamental gate in this simulation, so it understates what the full rules aim for.
 
 ## Caveats
