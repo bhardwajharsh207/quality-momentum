@@ -162,7 +162,7 @@ def cover(pdf, sections, sessions):
     for (title, df) in sections:
         fig.text(0.07, y, f"{title}  ({len(df)})", fontsize=10, fontweight="bold", color=INK, va="top")
         y -= 0.018
-        hdr = ["Ticker", "Stage", "Days", "Score", "6m RS", "vs 20DMA", "Entry status"]
+        hdr = ["Ticker", "Stage", "In stage", "Score", "6m RS", "vs 20DMA", "Entry status"]
         xs = [0.07, 0.20, 0.36, 0.42, 0.49, 0.56, 0.65]
         for xx, hh in zip(xs, hdr):
             fig.text(xx, y, hh, fontsize=7, color=INK2, fontweight="bold", va="top")
