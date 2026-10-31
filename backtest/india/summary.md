@@ -10,7 +10,7 @@ Universe 495 stocks (today's members). Today's watchlist: 35 stocks.
 |---|---|---|---|---|
 | Every stock, every day | 266341 | 2.69 | 0.28 | 48.8 |
 | Passes trend template (4.x) | 79920 | 2.1 | -0.11 | 48.8 |
-| Trend + entry setup = signal (no fundamentals) | 2221 | 2.34 | -0.02 | 48.4 |
+| Trend + entry setup = signal (no fundamentals) | 2221 | 2.34 | -0.02 | 48.3 |
 | Signal on today's watchlist (look-ahead) | 188 | 7.57 | 6.22 | 59.0 |
 
 ## Every signal as its own trade (exit rules applied, % costs deducted)
