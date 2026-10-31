@@ -62,9 +62,9 @@ class Config:
     max_cost_pct: float = 0.01
 
     # Quality gate (2.x)
-    roce_avg_min: float = 0.13
-    roce_each_min: float = 0.11
-    roe_fin_min: float = 0.14
+    roce_avg_min: float = 0.10
+    roce_each_min: float = 0.08
+    roe_fin_min: float = 0.12
     roa_fin_min: float = 0.012
     sales_cagr_min: float = 0.10
     profit_cagr_min: float = 0.12
