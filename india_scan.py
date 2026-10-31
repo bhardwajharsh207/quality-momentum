@@ -39,8 +39,8 @@ def load_universe() -> pd.DataFrame:
 
 CONFIG = Config(
     market="india",
-    capital=5000,                   # C, in rupees
-    n_stocks=3,                     # N
+    capital=50_000,                 # C, in rupees
+    n_stocks=6,                     # N
     currency="₹",
     benchmark="^CRSLDX",            # Nifty 500 index on Yahoo
     tz="Asia/Kolkata",

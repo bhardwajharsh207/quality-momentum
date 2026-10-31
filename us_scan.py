@@ -28,7 +28,7 @@ def load_universe() -> pd.DataFrame:
 CONFIG = Config(
     market="us",
     capital=5000,                   # C, in dollars - set your own
-    n_stocks=3,                     # N
+    n_stocks=6,                     # N
     currency="$",
     benchmark="^GSPC",              # S&P 500 index
     tz="America/New_York",

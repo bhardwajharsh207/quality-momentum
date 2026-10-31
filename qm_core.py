@@ -13,6 +13,7 @@ Data source: Yahoo Finance via the yfinance package.
 from __future__ import annotations
 
 import argparse
+import collections
 import concurrent.futures as cf
 import datetime as dt
 import json
@@ -54,6 +55,7 @@ class Config:
     max_chase_pct: float = 0.05
     disaster_stop_pct: float = 0.12
     max_new_per_day: int = 2
+    max_per_sector: int = 2          # 7.5: how many open positions may share a sector
     cooldown_days: int = 20
 
     # Costs (8.6): estimated round-trip cost = cost_fixed + cost_pct * value
@@ -941,7 +943,7 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
         cands.sort(key=lambda c: c["score"], reverse=True)
 
         held = set(open_pos.ticker) - {e["ticker"] for e in exits}
-        held_sectors = set(universe[universe.ticker.isin(held)].sector)
+        sector_count = collections.Counter(universe[universe.ticker.isin(held)].sector)
         free = max(cfg.n_stocks - len(held), 0)
         slots = min(free, cfg.max_new_per_day)
         for c in cands:
@@ -955,8 +957,8 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
             elif c.get("next_earnings") and not pd.isna(c["next_earnings"]) and \
                     0 <= (pd.Timestamp(c["next_earnings"]).date() - bar_date).days <= 7:
                 why = f"6C results due {c['next_earnings']}"
-            elif c["sector"] in held_sectors:
-                why = f"7.5 already holding {c['sector']}"
+            elif sector_count[c["sector"]] >= cfg.max_per_sector:
+                why = f"7.5 already holding {cfg.max_per_sector} in {c['sector']}"
             elif len(buys) >= slots:
                 why = "no free slot (11.1)"
             if not why:
@@ -966,7 +968,7 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
                 else:
                     c["size"] = size
                     buys.append(c)
-                    held_sectors.add(c["sector"])
+                    sector_count[c["sector"]] += 1
                     continue
             missed.append({"date": str(bar_date), "ticker": t, "score": round(c["score"], 3),
                            "setup": c["setup"]["setup"], "reason": why})
