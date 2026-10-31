@@ -88,6 +88,7 @@ class Config:
     emerging_cross_days: int = 30     # 50/200 cross this recent = "emerging"
     emerging_gap_pct: float = 0.03    # 50DMA within this % below the 200DMA = "emerging"
     pullback20: bool = True           # 6B2: allow pullback entries to the 20DMA
+    entry_cross_days: int | None = None  # entries need a 50/200 cross within N sessions (None = any trend age)
     watchlist_tab_top: int = 25       # Watchlist tab: top-scored stocks in an uptrend, with full write-up
 
     # Housekeeping
@@ -495,8 +496,11 @@ def trend_rules(d: pd.DataFrame, rs_pct: float | None, ret63: float, bench63: fl
               bool(g("r50")), gate=False),
         _rule("4.2b", "200DMA rising (vs 20d ago)", f"{s200:.2f} vs {info['s200_20']:.2f}", "higher",
               bool(g("r200")), gate=False),
-        _rule("4.3", "50/200 cross (fresh = tag, not a filter)", cross_txt, f"<= {cfg.emerging_cross_days} sessions",
-              info["fresh_cross"], gate=False),
+        (_rule("4.3", "50/200 golden cross recent (entry gate)", cross_txt, f"<= {cfg.entry_cross_days} sessions",
+               info["cross_age"] is not None and info["cross_age"] <= cfg.entry_cross_days)
+         if cfg.entry_cross_days else
+         _rule("4.3", "50/200 cross (fresh = tag, not a filter)", cross_txt, f"<= {cfg.emerging_cross_days} sessions",
+               info["fresh_cross"], gate=False)),
         _rule("4.4", "Close / 52w low", close / lo52, 1.30, bool(close >= 1.30 * lo52), gate=xg),
         _rule("4.5", "Close / 52w high", close / hi52, 0.75, bool(close >= 0.75 * hi52), gate=xg),
         _rule("4.6", "6m return percentile", rs_pct, 1 - cfg.rs_top_pct,

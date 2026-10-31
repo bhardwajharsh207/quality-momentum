@@ -57,6 +57,8 @@ def trend_mask_v2(F, bench_close, cfg):
     c, h, l = F["Close"], F["High"], F["Low"]
     T = qc.trend_stages(c, cfg)
     m = T["stage"].isin(qc.UPTREND) & (c.notna().cumsum() >= 260)
+    if cfg.entry_cross_days:
+        m = m & T["cross_age"].le(cfg.entry_cross_days)
     r126 = c / c.shift(126) - 1
     pct = r126.rank(axis=1, pct=True)
     if cfg.trend_extra_gates:

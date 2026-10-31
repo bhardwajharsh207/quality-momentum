@@ -43,9 +43,10 @@ CONFIG = Config(
     # Commission-free broker; allow ~0.05% for spread
     cost_pct=0.0005,
     cost_fixed=0,
-    # Fresh golden cross (4.3) is now a tag ("emerging"), not a filter. 52w range, relative strength and
-    # beat-the-index (4.4-4.7) remain entry gates for the US for now.
+    # US entries keep the fresh golden cross (4.3) and 4.4-4.7 as gates: the Oct 2026 backtest showed entries in
+    # older uptrends cut the average trade from ~6% to ~2%. Every stock still appears in the Momentum tab.
     trend_extra_gates=True,
+    entry_cross_days=65,
 )
 
 if __name__ == "__main__":

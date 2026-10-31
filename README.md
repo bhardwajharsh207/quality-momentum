@@ -35,7 +35,8 @@ Everything runs on GitHub Actions in this repo; nothing is needed on a laptop.
    30% momentum (6m return, 3m vs index, distance from 52w high), as percentiles across the universe.
 3. **Entry gates**: stage must be confirmed or emerging; valuation (section 5, incl. positive EPS and P/E < 100)
    must pass. US also keeps 4.4-4.7 (52w range, relative strength, beat the index) as gates
-   (`trend_extra_gates`); India uses them only in the score. The fresh golden cross (4.3) is a tag, not a filter.
+   (`trend_extra_gates`) and requires the 50/200 golden cross within 65 sessions for entries (`entry_cross_days`);
+   India uses 4.4-4.7 only in the score and allows any trend age. Both markets list every stage in the Momentum tab.
 4. **Entry setups**: 50-day base breakout on volume, pullback to the 50DMA, or (new) pullback to a rising 20DMA.
    Candidates are ranked by score.
 
