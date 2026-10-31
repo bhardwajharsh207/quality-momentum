@@ -1,8 +1,8 @@
 date,ticker,score,setup,reason
 2026-10-23,IPCALAB.NS,0.59,pullback,8.6 position size below 1 share
-2026-10-30,COFORGE.NS,0.822,breakout,8.6 position size below 1 share
-2026-10-30,ACUTAAS.NS,0.797,breakout,8.6 position size below 1 share
-2026-10-30,GESHIP.NS,0.763,pullback20,8.6 position size below 1 share
+2026-10-30,COFORGE.NS,0.823,breakout,8.6 position size below 1 share
+2026-10-30,ACUTAAS.NS,0.798,breakout,8.6 position size below 1 share
+2026-10-30,GESHIP.NS,0.764,pullback20,8.6 position size below 1 share
 2026-10-30,PERSISTENT.NS,0.71,breakout,8.6 position size below 1 share
 2026-10-30,LAURUSLABS.NS,0.696,pullback,8.6 position size below 1 share
 2026-10-30,ABDL.NS,0.635,pullback,8.6 est. round-trip cost 2.5% > 1%
