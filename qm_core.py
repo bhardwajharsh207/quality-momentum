@@ -89,7 +89,7 @@ class Config:
     emerging_gap_pct: float = 0.03    # 50DMA within this % below the 200DMA = "emerging"
     pullback20: bool = True           # 6B2: allow pullback entries to the 20DMA
     entry_cross_days: int | None = None  # entries need a 50/200 cross within N sessions (None = any trend age)
-    watchlist_tab_top: int = 25       # Watchlist tab: top-scored stocks in an uptrend, with full write-up
+    watchlist_tab_top: int = 25       # Board: full write-up (why / vs peers / next) for the top N by score
 
     # Housekeeping
     watchlist_max_age_days: int = 7
@@ -1352,6 +1352,8 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, st
 
     # Board: every stock in an uptrend or pullback; most recent stage change first, then score
     board = []
+    top_ids = {r["ticker"] for r in sorted([r for r in mom if r["w"].get("passed")],
+                                         key=lambda r: -(r["score"] or 0))[:cfg.watchlist_tab_top]}
     for r in sorted(mom, key=lambda r: (-(pd.Timestamp(r["st"].get("stage_since") or "1900-01-01").value),
                                          -(r["score"] or 0))):
         w, st, t = r["w"], r["st"], r["ticker"]
@@ -1367,9 +1369,9 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, st
             f"{int(w['fund_ok'])}/{int(w['fund_known'])}" if _ok(w.get("fund_known")) and w.get("fund_known") else "",
             w.get("fund_misses") if _ok(w.get("fund_misses")) else "",
             str(ne) if _ok(ne) else "",
-            why_text(w, st) if w.get("passed") else "",
-            peers_text(w, (peers or {}).get(t)) if w.get("passed") else "",
-            next_text(cfg, w, st, bar_date) if w.get("passed") else "", *stock_links(t), sess])
+            why_text(w, st) if t in top_ids else "",
+            peers_text(w, (peers or {}).get(t)) if t in top_ids else "",
+            next_text(cfg, w, st, bar_date) if t in top_ids else "", *stock_links(t), sess])
 
     # Today: this market's block - actions, then changes, then stocks close to a trigger
     tl = [[f"{m}: session {sess}", "", f"run {fetched_at}. In uptrend: {count('confirmed')} confirmed, "

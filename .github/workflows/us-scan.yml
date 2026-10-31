@@ -47,6 +47,12 @@ jobs:
             python us_scan.py
           fi
           } 2>&1 | tee logs/us-latest.log
+      - name: Write results to the Google Sheet
+        if: success()
+        continue-on-error: true
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+        run: python sheet_sync.py us
       - name: Save reports and state
         if: always()
         run: |
