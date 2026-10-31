@@ -477,7 +477,7 @@ IN_UPTREND = ("confirmed", "emerging", "pullback")    # stages shown on the Boar
 
 
 def stage_history(s: pd.Series) -> dict:
-    """How long the stock has been in its current stage, and in an uptrend (incl. pullbacks), in sessions."""
+    """Sessions in the current stage, and in an uptrend (emerging/confirmed/pullback, brief stalls included)."""
     s = s[s != ""]
     out = {"stage_since": None, "days_in_stage": None, "up_since": None, "days_up": None}
     if s.empty:
@@ -485,8 +485,8 @@ def stage_history(s: pd.Series) -> dict:
     chg = np.flatnonzero(s.ne(s.shift()).values)
     i = chg[-1]
     out.update(stage_since=s.index[i].date(), days_in_stage=int(len(s) - i))
-    up = s.isin(IN_UPTREND)
-    if up.iloc[-1]:
+    up = s.isin(IN_UPTREND + ("stalling",))      # a brief stall (50DMA flat, still above 200DMA) doesn't reset it
+    if s.iloc[-1] in IN_UPTREND:
         j = np.flatnonzero(up.ne(up.shift()).values)[-1]
         out.update(up_since=s.index[j].date(), days_up=int(len(s) - j))
     return out
