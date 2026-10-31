@@ -471,6 +471,48 @@ def trend_stages(c: pd.DataFrame, cfg: Config) -> dict:
             "cross_age": age, "fresh": fresh}
 
 
+IN_UPTREND = ("confirmed", "emerging", "pullback")    # stages shown on the Board
+
+
+def stage_history(s: pd.Series) -> dict:
+    """How long the stock has been in its current stage, and in an uptrend (incl. pullbacks), in sessions."""
+    s = s[s != ""]
+    out = {"stage_since": None, "days_in_stage": None, "up_since": None, "days_up": None}
+    if s.empty:
+        return out
+    chg = np.flatnonzero(s.ne(s.shift()).values)
+    i = chg[-1]
+    out.update(stage_since=s.index[i].date(), days_in_stage=int(len(s) - i))
+    up = s.isin(IN_UPTREND)
+    if up.iloc[-1]:
+        j = np.flatnonzero(up.ne(up.shift()).values)[-1]
+        out.update(up_since=s.index[j].date(), days_up=int(len(s) - j))
+    return out
+
+
+def stage_events(s: pd.Series, after) -> list[dict]:
+    """Stage changes on sessions after `after` that involve an uptrend stage."""
+    s = s[s != ""]
+    chg = np.flatnonzero(s.ne(s.shift()).values)
+    out = []
+    for k in range(1, len(chg)):
+        i = chg[k]
+        d = s.index[i].date()
+        frm, to = s.iloc[i - 1], s.iloc[i]
+        if d <= after or (frm not in IN_UPTREND and to not in IN_UPTREND):
+            continue
+        out.append({"date": d, "from": frm, "to": to, "days_prev": int(i - chg[k - 1])})
+    return out
+
+
+def event_label(frm: str, to: str) -> str:
+    if frm not in IN_UPTREND:
+        return f"Entered uptrend ({STAGE_LABEL[to]})"
+    if to not in IN_UPTREND:
+        return f"Left uptrend (now {STAGE_LABEL[to].lower()})"
+    return f"{STAGE_LABEL[frm]} -> {STAGE_LABEL[to]}"
+
+
 def trend_rules(d: pd.DataFrame, rs_pct: float | None, ret63: float, bench63: float, cfg: Config):
     c, lo, hi = d["Close"], d["Low"], d["High"]
     T = trend_stages(c.to_frame("x"), cfg)
@@ -487,7 +529,7 @@ def trend_rules(d: pd.DataFrame, rs_pct: float | None, ret63: float, bench63: fl
             "s200_20": float(T["s200"]["x"].iloc[-21]), "cross_txt": cross_txt,
             "cross_age": None if pd.isna(age) else int(age), "fresh_cross": bool(g("fresh")),
             "ext20": close / s20 - 1, "ext50": close / s50 - 1, "from_hi52": close / hi52,
-            "from_lo52": close / lo52}
+            "from_lo52": close / lo52, **stage_history(T["stage"]["x"]), "stage_series": T["stage"]["x"]}
     xg = cfg.trend_extra_gates
     rules = [
         _rule("4.1", "Trend stage confirmed or emerging", STAGE_LABEL.get(stage, stage), "confirmed/emerging",
@@ -844,15 +886,21 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
     score_cols = ["score", "score_quality", "score_growth", "score_momentum"]
     score_map = scored.set_index("ticker")[score_cols].to_dict("index") if len(scored) else {}
 
-    # Momentum list = every stock in a confirmed or emerging uptrend; compare with the previous session
-    stages_now = {t: v[2]["trend_stage"] for t, v in trend.items()}
-    in_trend = {t for t, st in stages_now.items() if st in UPTREND}
-    prev_stages = state.get("stages") or {}
-    prev_trend = {t for t, st in prev_stages.items() if st in UPTREND}
-    wl_added = sorted(in_trend - prev_trend) if prev_stages else []
-    wl_removed = sorted(prev_trend - in_trend) if prev_stages else []
-    newly = {t: prev_stages.get(t, "") for t in wl_added}
-    state["stages"] = stages_now
+    # Stage changes since the last processed session (all missed sessions, capped at 10), from price history
+    in_trend = {t for t, v in trend.items() if v[2]["trend_stage"] in UPTREND}
+    after = dt.date.fromisoformat(last_done) if last_done and dt.date.fromisoformat(last_done) < bar_date \
+        else bars[-2].date()
+    after = max(after, bars[max(-11, -len(bars))].date())
+    events = []
+    for t, (_, _, info) in trend.items():
+        for e in stage_events(info.pop("stage_series"), after):
+            events.append({"ticker": t, **e})
+    events.sort(key=lambda e: (e["date"], e["ticker"]))
+    today_ev = [e for e in events if e["date"] == bar_date]
+    wl_added = sorted({e["ticker"] for e in today_ev if e["to"] in UPTREND and e["from"] not in UPTREND})
+    wl_removed = sorted({e["ticker"] for e in today_ev if e["from"] in UPTREND and e["to"] not in UPTREND})
+    newly = {e["ticker"]: e["from"] for e in today_ev if e["ticker"] in wl_added}
+    state.pop("stages", None)
 
     cands, status = [], {}
     first_fail = lambda rules: next((f"{r['rule']} {r['name']}" for r in _gates(rules) if r["ok"] is not True), "")
@@ -924,6 +972,13 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
                            "setup": c["setup"]["setup"], "reason": why})
 
     append_csv(cfg.data_dir / "missed.csv", missed, ["date", "ticker"])
+    skip_reason = {m["ticker"]: m["reason"] for m in missed}
+    append_csv(cfg.data_dir / "setups.csv",
+               [{"date": str(bar_date), "ticker": c["ticker"], "setup": c["setup"]["setup"],
+                 "limit": round(c["setup"]["limit"], 4), "structure_low": round(c["setup"]["structure_low"], 4),
+                 "result": "BUY" if c in buys else skip_reason.get(c["ticker"], "held")} for c in cands],
+               ["date", "ticker"])
+    entry = entry_status(cfg, bars, bar_date, status, buys, missed)
     append_csv(cfg.data_dir / "signals.csv",
                [{"date": str(bar_date), "ticker": b["ticker"], "setup": b["setup"]["setup"],
                  "close": round(b["close"], 2), "limit": round(b["setup"]["limit"], 2),
@@ -938,7 +993,7 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
     report = render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, held_notes,
                            wl_added, wl_removed, len(in_trend), len(universe), missed, stale_note, need_full,
                            int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0,
-                           mom=mom, newly=newly)
+                           mom=mom, newly=newly, events=events)
     path = cfg.report_dir / f"{bar_date}.md"
     path.write_text(report)
     append_csv(cfg.data_dir / "runs.csv", [{
@@ -951,8 +1006,8 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
         "notes": stale_note}], ["session"])
     peers = sector_peer_stats(wl, px)
     write_sheet_rows(cfg, bar_date, fetched_at, len(universe), mom, buys, exits, stop_updates,
-                     missed, wl_added, wl_removed, stale_note, status,
-                     int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0, peers, wl_map)
+                     missed, events, stale_note, status, entry,
+                     int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0, peers, score_map, sector_of)
     state["last_bar_date"] = str(bar_date)
     save_state(cfg, state)
     log(report)
@@ -962,29 +1017,32 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
 SHEET_HEADERS = {
     "Runs": ["Market", "Session", "Run at", "Universe", "Watchlist", "Buys", "Exits", "Stop updates",
              "Skipped signals", "Missing fundamentals", "Watchlist added", "Watchlist removed", "Notes", "Report"],
-    "Momentum": ["Market", "Session", "Ticker", "Sector", "Trend stage", "New today", "50/200 cross",
-                 "Score", "Quality score", "Growth score", "Momentum score", "6m return pctile", "3m vs index",
-                 "% from 20DMA", "% from 50DMA", "% from 52w high", "Fund. rules passed", "Rules missed",
-                 "Status today", "Last close", "Screener.in", "Yahoo Finance"],
     "Signals": ["Market", "Session", "Ticker", "Sector", "Setup", "Setup detail", "Score", "Quality score",
                 "Growth score", "Momentum score", "Last close", "Limit (max entry)", "Stop", "Disaster stop",
                 "Shares", "Value", "ROCE/ROE avg", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
                 "6m return pctile", "P/E", "PEG", "Unverified rules", "Manual checks", "Report"],
     "Position actions": ["Market", "Session", "Ticker", "Action", "Last close", "Entry", "P&L %", "Detail"],
     "Skipped signals": ["Market", "Session", "Ticker", "Setup", "Score", "Reason skipped"],
-    "Watchlist": ["Market", "Session", "Ticker", "Sector", "Status today", "Why it's great",
-                  "vs competitors (sector peers in index)", "Next: what to check",
-                  "Last close", "ROCE/ROE avg",
-                  "OCF/Profit", "Debt/Equity", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
-                  "6m return pctile", "P/E", "PEG", "Next results", "Unverified rules",
-                  "Screener.in", "Yahoo Finance"],
+    "Changes": ["Market", "Session", "Ticker", "Sector", "Event", "From", "To", "Days in previous stage",
+                "Score", "Last close", "Status today", "Screener.in", "Yahoo Finance"],
 }
 # New columns sit at the end of each tab so rows logged before they existed stay aligned.
-SHEET_HEADERS["Signals"] += ["Screener.in", "Yahoo Finance"]
+SHEET_HEADERS["Signals"] += ["Screener.in", "Yahoo Finance", "Trend stage", "Days in stage", "Days in uptrend"]
 # From v2 "Watchlist" in Runs = stocks in a confirmed/emerging uptrend; added/removed = entered/left that list.
-SHEET_HEADERS["Runs"] += ["Confirmed", "Emerging", "Pullback in uptrend"]
-SHEET_HEADERS["Watchlist"] += ["Trend stage", "Score", "Quality score", "Growth score", "Momentum score",
-                               "Fund. rules passed", "Rules missed"]
+SHEET_HEADERS["Runs"] += ["Confirmed", "Emerging", "Pullback in uptrend", "Stage changes"]
+SHEET_HEADERS["Skipped signals"] += ["Trend stage", "Days in stage", "Last close"]
+SHEET_HEADERS["Position actions"] += ["Trend stage", "Days in stage"]
+
+# Tabs the sheet task clears and rewrites (current state), rather than appends to
+BOARD_HEADERS = ["Ticker", "Sector", "Trend stage", "In stage since", "Days in stage", "In uptrend since",
+                 "Days in uptrend", "Entry status", "Trigger to watch", "Status today", "Score", "Quality score",
+                 "Growth score", "Momentum score", "50/200 cross", "6m return pctile", "3m vs index",
+                 "% from 20DMA", "% from 50DMA", "% from 52w high", "Last close", "P/E", "PEG",
+                 "Fund. rules passed", "Rules missed", "Next results", "Why it's great",
+                 "vs competitors (sector peers in index)", "Next: what to check", "Screener.in", "Yahoo Finance",
+                 "Session"]
+TODAY_HEADERS = ["Section", "Ticker", "Detail", "Trend stage", "Days in stage", "Score", "Last close", "Link"]
+TODAY_BLOCK = {"india": ("A", "H"), "us": ("J", "Q")}
 STAGE_ORDER = {"emerging": 0, "confirmed": 1, "pullback": 2}
 
 
@@ -1000,6 +1058,62 @@ def momentum_rows(trend, status, wl_map, score_map, sector_of):
                     "score": score_map.get(t, {}).get("score", 0.0)})
     out.sort(key=lambda r: -(r["score"] or 0))
     return out
+
+
+def entry_status(cfg, bars, bar_date, status, buys, missed, lookback=5):
+    """Per ticker: is there a buy setup today, or a recent one that is still buyable, or a trigger close by?"""
+    out = {}
+    for b in buys:
+        out[b["ticker"]] = f"BUY today ({b['setup']['setup']}), limit {b['setup']['limit']:,.2f}"
+    for m in missed:
+        out.setdefault(m["ticker"], f"Setup today ({m['setup']}) but skipped: {m['reason']}")
+    p = cfg.data_dir / "setups.csv"
+    if p.exists():
+        log = pd.read_csv(p, dtype={"ticker": str})
+        log["date"] = pd.to_datetime(log["date"])
+        recent = [d for d in bars[-1 - lookback:-1]]
+        log = log[log["date"].isin(recent)].sort_values("date")
+        for r in log.itertuples():
+            if r.ticker in out or r.ticker not in status:
+                continue
+            ago = int((bars > r.date).sum())
+            close = status[r.ticker].get("close")
+            if close is None:
+                continue
+            if close < r.structure_low:
+                v = "expired: broke below the setup low"
+            elif close > r.limit:
+                v = f"expired: now {close / r.limit - 1:+.1%} above its limit, don't chase"
+            else:
+                v = f"still under its limit {r.limit:,.2f}"
+            out[r.ticker] = f"Setup {ago} session{'s' if ago > 1 else ''} ago ({r.setup}): {v}"
+    for t, st in status.items():
+        if t in out or st.get("trend_stage") not in IN_UPTREND:
+            continue
+        close, piv = st.get("close"), st.get("pivot")
+        if st.get("trend_stage") == "pullback":
+            out[t] = f"Below 50DMA: watch for a close back above {st['s50']:,.2f}"
+        elif _ok(piv) and piv * 0.98 <= close < piv:
+            out[t] = f"Near breakout: {close / piv - 1:.1%} below {piv:,.2f}"
+        elif _ok(st.get("ext20")) and 0 <= st["ext20"] <= 0.02:
+            out[t] = f"In 20DMA pullback zone ({st['s20']:,.2f})"
+        elif _ok(st.get("ext50")) and 0 <= st["ext50"] <= 0.03:
+            out[t] = f"In 50DMA pullback zone ({st['s50']:,.2f})"
+        elif _ok(st.get("ext20")) and st["ext20"] > 0.15:
+            out[t] = f"Extended: {st['ext20']:.0%} above 20DMA, wait for a pullback"
+        else:
+            out[t] = "Waiting"
+    return out
+
+
+def trigger_text(cfg, st):
+    cur, parts = cfg.currency, []
+    if _ok(st.get("pivot")):
+        parts.append(f"Breakout > {cur}{st['pivot']:,.0f}" +
+                     (f" on vol > {1.5 * st['vol50']:,.0f}" if _ok(st.get("vol50")) else ""))
+    if _ok(st.get("s20")) and _ok(st.get("s50")):
+        parts.append(f"pullback to {cur}{st['s20']:,.0f} (20DMA) / {cur}{st['s50']:,.0f} (50DMA)")
+    return "; ".join(parts)
 
 
 def stock_links(ticker: str) -> tuple[str, str]:
@@ -1167,73 +1281,150 @@ def next_text(cfg, w, st, bar_date):
 
 
 def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, stop_updates, missed,
-                     wl_added, wl_removed, notes, status, n_no_data, peers=None, wl_map=None):
-    """Rows to append to the Google Sheet, one list per tab, saved as data/<market>/sheet_rows/<session>.json."""
+                     events, notes, status, entry, n_no_data, peers=None, score_map=None, sector_of=None):
+    """Sheet rows for this session, saved as data/<market>/sheet_rows/<session>.json.
+
+    "rows":    append-only tabs (one row per event).
+    "replace": current-state tabs the sheet task clears and rewrites: this market's Board tab and its block of Today.
+    """
     import os
     m, sess = cfg.market.upper(), str(bar_date)
     repo = os.environ.get("GITHUB_REPOSITORY")
     link = f"https://github.com/{repo}/blob/main/reports/{cfg.market}/{sess}.md" if repo else ""
+    score_map, sector_of = score_map or {}, sector_of or {}
+    sc = lambda t: score_map.get(t, {}).get("score")
+    stg = lambda t: STAGE_LABEL.get(status.get(t, {}).get("trend_stage", ""), "")
+    dis = lambda t: status.get(t, {}).get("days_in_stage") or ""
+    pct = lambda v: _num(v, 4) if _ok(v) else ""
+    one_link = lambda t: (stock_links(t)[0] or stock_links(t)[1])
     rows = {k: [] for k in SHEET_HEADERS}
-    count = lambda stg: sum(1 for r in mom if r["stage"] == stg)
+    count = lambda k: sum(1 for r in mom if r["stage"] == k)
     rows["Runs"].append([m, sess, fetched_at, n_universe, count("confirmed") + count("emerging"), len(buys),
-                         len(exits), len(stop_updates), len(missed), n_no_data, " ".join(wl_added[:60]),
-                         " ".join(wl_removed[:60]), notes, link,
-                         count("confirmed"), count("emerging"), count("pullback")])
-    new_today = set(wl_added)
-    pct = lambda v: _num(v, 4) if _ok(v) else ""         # decimals, like the other daily tabs (0.05 = 5%)
-    for r in mom:
-        w, st, t = r["w"], r["st"], r["ticker"]
-        rows["Momentum"].append([
-            m, sess, t, w.get("sector", ""), STAGE_LABEL[r["stage"]], "yes" if t in new_today else "",
-            st.get("cross_txt", ""), _num(w.get("score"), 3), _num(w.get("score_quality"), 3),
-            _num(w.get("score_growth"), 3), _num(w.get("score_momentum"), 3), _num(st.get("rs_pct"), 3),
-            pct(st.get("excess63")), pct(st.get("ext20")), pct(st.get("ext50")),
-            pct(st.get("from_hi52") - 1 if _ok(st.get("from_hi52")) else None),
-            f"{int(w['fund_ok'])}/{int(w['fund_known'])}" if _ok(w.get("fund_known")) and w.get("fund_known") else "",
-            w.get("fund_misses") if _ok(w.get("fund_misses")) else "", st.get("stage", ""),
-            _num(st.get("close"), 2), *stock_links(t)])
+                         len(exits), len(stop_updates), len(missed), n_no_data,
+                         " ".join(e["ticker"] for e in events if e["date"] == bar_date and e["from"] not in IN_UPTREND)[:400],
+                         " ".join(e["ticker"] for e in events if e["date"] == bar_date and e["to"] not in IN_UPTREND)[:400],
+                         notes, link, count("confirmed"), count("emerging"), count("pullback"), len(events)])
     for b in buys:
-        s, st = b["size"], status.get(b["ticker"], {})
+        s_, st = b["size"], status.get(b["ticker"], {})
         rows["Signals"].append([
             m, sess, b["ticker"], b["sector"], b["setup"]["setup"], b["setup"]["detail"], _num(b["score"], 3),
             _num(b["score_quality"], 3), _num(b["score_growth"], 3), _num(b["score_momentum"], 3),
-            _num(b["close"], 2), _num(b["setup"]["limit"], 2), _num(s["stop"], 2),
-            _num(b["close"] * (1 - cfg.disaster_stop_pct), 2), s["shares"], _num(s["value"], 0),
+            _num(b["close"], 2), _num(b["setup"]["limit"], 2), _num(s_["stop"], 2),
+            _num(b["close"] * (1 - cfg.disaster_stop_pct), 2), s_["shares"], _num(s_["value"], 0),
             _num(b.get("quality_metric")), _num(b.get("q_sales_yoy")), _num(b.get("q_profit_yoy")),
             _num(b.get("accel")), _num(st.get("rs_pct"), 3), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
-            b.get("unverified") or "", "; ".join(cfg.manual_checks), link, *stock_links(b["ticker"])])
+            b.get("unverified") or "", "; ".join(cfg.manual_checks), link, *stock_links(b["ticker"]),
+            stg(b["ticker"]), dis(b["ticker"]), st.get("days_up") or ""])
     for e in exits:
         rows["Position actions"].append([m, sess, e["ticker"], "EXIT", _num(e["close"], 2), _num(e["entry"], 2),
-                                         _num(e["pnl_pct"] * 100, 2), e["reason"]])
+                                         _num(e["pnl_pct"] * 100, 2), e["reason"], stg(e["ticker"]), dis(e["ticker"])])
     for u in stop_updates:
         rows["Position actions"].append([m, sess, u["ticker"], "STOP UPDATE", "", "", "",
-                                         f"{u['old']:.2f} -> {u['new']:.2f}: {u['why']}"])
+                                         f"{u['old']:.2f} -> {u['new']:.2f}: {u['why']}", stg(u["ticker"]),
+                                         dis(u["ticker"])])
     for x in missed:
-        rows["Skipped signals"].append([m, sess, x["ticker"], x["setup"], x["score"], x["reason"]])
-    top = [r for r in mom if r["stage"] in UPTREND and r["w"].get("passed")][:cfg.watchlist_tab_top]
-    for r in top:
-        w, st = r["w"], r["st"]
-        rows["Watchlist"].append([
-            m, sess, w["ticker"], w.get("sector", ""), st.get("stage", ""), why_text(w, st),
-            peers_text(w, (peers or {}).get(w["ticker"])), next_text(cfg, w, st, bar_date),
-            _num(st.get("close"), 2),
-            _num(w.get("quality_metric")), _num(w.get("ocf_np"), 2), _num(w.get("de"), 2),
-            _num(w.get("q_sales_yoy")), _num(w.get("q_profit_yoy")), _num(w.get("accel")),
-            _num(st.get("rs_pct"), 3), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
-            str(w.get("next_earnings") or "") if not pd.isna(w.get("next_earnings")) else "",
-            w.get("unverified") or "", *stock_links(w["ticker"]),
-            STAGE_LABEL[r["stage"]], _num(w.get("score"), 3), _num(w.get("score_quality"), 3),
-            _num(w.get("score_growth"), 3), _num(w.get("score_momentum"), 3),
-            f"{int(w['fund_ok'])}/{int(w['fund_known'])}" if _ok(w.get("fund_known")) else "",
-            w.get("fund_misses") if _ok(w.get("fund_misses")) else ""])
+        rows["Skipped signals"].append([m, sess, x["ticker"], x["setup"], x["score"], x["reason"], stg(x["ticker"]),
+                                        dis(x["ticker"]), _num(status.get(x["ticker"], {}).get("close"), 2)])
+
+    # Changes: stage changes (all sessions since the last run), plus today's signals and position actions
+    for e in events:
+        t, st = e["ticker"], status.get(e["ticker"], {})
+        rows["Changes"].append([m, str(e["date"]), t, sector_of.get(t, ""), event_label(e["from"], e["to"]),
+                                STAGE_LABEL[e["from"]], STAGE_LABEL[e["to"]], e["days_prev"], _num(sc(t), 3),
+                                _num(st.get("close"), 2), st.get("stage", ""), *stock_links(t)])
+    for b in buys:
+        t = b["ticker"]
+        rows["Changes"].append([m, sess, t, b["sector"], f"BUY signal ({b['setup']['setup']})", "", "", "",
+                                _num(b["score"], 3), _num(b["close"], 2),
+                                f"limit {b['setup']['limit']:,.2f}, stop {b['size']['stop']:,.2f}", *stock_links(t)])
+    for x in missed:
+        t = x["ticker"]
+        rows["Changes"].append([m, sess, t, sector_of.get(t, ""), f"Setup skipped ({x['setup']})", "", "", "",
+                                x["score"], _num(status.get(t, {}).get("close"), 2), x["reason"], *stock_links(t)])
+    for e in exits:
+        t = e["ticker"]
+        rows["Changes"].append([m, sess, t, sector_of.get(t, ""), "EXIT", "", "", "", _num(sc(t), 3),
+                                _num(e["close"], 2), e["reason"], *stock_links(t)])
+    for u in stop_updates:
+        t = u["ticker"]
+        rows["Changes"].append([m, sess, t, sector_of.get(t, ""), "STOP MOVED", "", "", "", _num(sc(t), 3), "",
+                                f"{u['old']:.2f} -> {u['new']:.2f}", *stock_links(t)])
+
+    # Board: every stock in an uptrend or pullback; most recent stage change first, then score
+    board = []
+    for r in sorted(mom, key=lambda r: (-(pd.Timestamp(r["st"].get("stage_since") or "1900-01-01").value),
+                                         -(r["score"] or 0))):
+        w, st, t = r["w"], r["st"], r["ticker"]
+        ne = w.get("next_earnings")
+        board.append([
+            t, w.get("sector", ""), STAGE_LABEL[r["stage"]], str(st.get("stage_since") or ""),
+            st.get("days_in_stage") or "", str(st.get("up_since") or ""), st.get("days_up") or "",
+            entry.get(t, ""), trigger_text(cfg, st), st.get("stage", ""), _num(w.get("score"), 3),
+            _num(w.get("score_quality"), 3), _num(w.get("score_growth"), 3), _num(w.get("score_momentum"), 3),
+            st.get("cross_txt", ""), _num(st.get("rs_pct"), 3), pct(st.get("excess63")), pct(st.get("ext20")),
+            pct(st.get("ext50")), pct(st.get("from_hi52") - 1 if _ok(st.get("from_hi52")) else None),
+            _num(st.get("close"), 2), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
+            f"{int(w['fund_ok'])}/{int(w['fund_known'])}" if _ok(w.get("fund_known")) and w.get("fund_known") else "",
+            w.get("fund_misses") if _ok(w.get("fund_misses")) else "",
+            str(ne) if _ok(ne) else "",
+            why_text(w, st) if w.get("passed") else "",
+            peers_text(w, (peers or {}).get(t)) if w.get("passed") else "",
+            next_text(cfg, w, st, bar_date) if w.get("passed") else "", *stock_links(t), sess])
+
+    # Today: this market's block - actions, then changes, then stocks close to a trigger
+    tl = [[f"{m}: session {sess}", "", f"run {fetched_at}. In uptrend: {count('confirmed')} confirmed, "
+           f"{count('emerging')} emerging, {count('pullback')} pulling back. "
+           f"{len(events)} stage changes since the last run.", "", "", "", "", link]]
+    for b in buys:
+        t = b["ticker"]
+        tl.append(["Act: BUY", t, f"{b['setup']['setup']}: limit {b['setup']['limit']:,.2f}, stop "
+                   f"{b['size']['stop']:,.2f}, {b['size']['shares']} shares. Skip if it opens above the limit.",
+                   stg(t), dis(t), _num(b["score"], 3), _num(b["close"], 2), one_link(t)])
+    for e in exits:
+        t = e["ticker"]
+        tl.append(["Act: EXIT", t, f"{e['reason']} (P&L {e['pnl_pct']:+.1%})", stg(t), dis(t), _num(sc(t), 3),
+                   _num(e["close"], 2), one_link(t)])
+    for u in stop_updates:
+        t = u["ticker"]
+        tl.append(["Act: MOVE STOP", t, f"{u['old']:.2f} -> {u['new']:.2f}: {u['why']}", stg(t), dis(t),
+                   _num(sc(t), 3), "", one_link(t)])
+    if not (buys or exits or stop_updates):
+        tl.append(["Act", "", "No action today", "", "", "", "", ""])
+    for x in missed:
+        t = x["ticker"]
+        tl.append(["Setup skipped", t, f"{x['setup']}: {x['reason']}", stg(t), dis(t), x["score"],
+                   _num(status.get(t, {}).get("close"), 2), one_link(t)])
+    for e in sorted(events, key=lambda e: (e["date"] != bar_date, -(sc(e["ticker"]) or 0)))[:25]:
+        t = e["ticker"]
+        when = "" if e["date"] == bar_date else f" (on {e['date']})"
+        tl.append(["Changed", t, event_label(e["from"], e["to"]) + when, stg(t), dis(t), _num(sc(t), 3),
+                   _num(status.get(t, {}).get("close"), 2), one_link(t)])
+    if len(events) > 25:
+        tl.append(["Changed", "", f"+{len(events) - 25} more stage changes in the Changes tab", "", "", "", "", ""])
+    near = [r for r in mom if str(entry.get(r["ticker"], "")).startswith(("Near breakout", "In 20DMA", "In 50DMA",
+                                                                          "Setup "))]
+    for r in near[:10]:
+        t = r["ticker"]
+        tl.append(["Near a trigger", t, entry[t], stg(t), dis(t), _num(r["score"], 3),
+                   _num(r["st"].get("close"), 2), one_link(t)])
+
+    c1, c2 = TODAY_BLOCK[cfg.market]
+    board_tab = f"Board - {'India' if cfg.market == 'india' else 'US'}"
+    replace = {
+        board_tab: {"clear": f"'{board_tab}'!A1:AF5000", "start": f"'{board_tab}'!A1",
+                    "values": [BOARD_HEADERS] + board},
+        "Today": {"clear": f"'Today'!{c1}1:{c2}300", "start": f"'Today'!{c1}1",
+                  "values": [TODAY_HEADERS] + tl},
+    }
     out = cfg.data_dir / "sheet_rows"
     out.mkdir(exist_ok=True)
-    (out / f"{sess}.json").write_text(json.dumps({"headers": SHEET_HEADERS, "rows": rows}, default=str, indent=1))
+    (out / f"{sess}.json").write_text(json.dumps({"headers": SHEET_HEADERS, "rows": rows, "replace": replace},
+                                                 default=str, indent=1))
 
 
 def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, held_notes,
                   wl_added, wl_removed, n_watch, n_universe, missed, stale_note, rebuilt, n_no_data=0,
-                  mom=None, newly=None):
+                  mom=None, newly=None, events=None):
     cur = cfg.currency
     mom = mom or []
     L = [f"# {cfg.market.upper()} Quality Momentum - signals from {bar_date} close", "",
@@ -1300,16 +1491,22 @@ def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, hel
         L += ["## MOMENTUM", "",
               f"Confirmed uptrend {cnt['confirmed']}, emerging {cnt['emerging']}, pullback in uptrend "
               f"{cnt['pullback']}. Ranked by score (quality 40%, growth 30%, momentum 30%). Full list: Momentum tab.",
-              "", "| Ticker | Stage | Score | 50/200 cross | 6m RS pctile | % from 20DMA | Fund. rules missed | Status |",
-              "|---|---|---|---|---|---|---|---|"]
+              "", "| Ticker | Stage | Days in stage | Score | 50/200 cross | 6m RS pctile | % from 20DMA | Fund. rules missed | Status |",
+              "|---|---|---|---|---|---|---|---|---|"]
         for stg in ("emerging", "confirmed"):
             for r in [x for x in mom if x["stage"] == stg][:12]:
                 st, w = r["st"], r["w"]
                 rs = f"{st['rs_pct']:.0%}" if _ok(st.get("rs_pct")) else "n/a"
                 ext = f"{st['ext20']:+.1%}" if _ok(st.get("ext20")) else ""
                 miss = w.get("fund_misses") if _ok(w.get("fund_misses")) else ""
-                L.append(f"| {_md_ticker(r['ticker'])} | {STAGE_LABEL[stg]} | {r['score']:.2f} | "
+                L.append(f"| {_md_ticker(r['ticker'])} | {STAGE_LABEL[stg]} | {st.get('days_in_stage') or ''} | {r['score']:.2f} | "
                          f"{st.get('cross_txt', '')} | {rs} | {ext} | {miss} | {st.get('stage', '')} |")
+        L.append("")
+    if events:
+        L += [f"## STAGE CHANGES SINCE THE LAST RUN ({len(events)})", "",
+              "| Date | Ticker | Change | Days in previous stage |", "|---|---|---|---|"]
+        for e in events[-60:]:
+            L.append(f"| {e['date']} | {_md_ticker(e['ticker'])} | {event_label(e['from'], e['to'])} | {e['days_prev']} |")
         L.append("")
     if wl_added or wl_removed:
         L += ["## UPTREND CHANGES SINCE LAST SESSION", ""]
