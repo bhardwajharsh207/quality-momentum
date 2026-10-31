@@ -22,6 +22,30 @@ Everything runs on GitHub Actions in this repo; nothing is needed on a laptop.
   `--rebuild` for a fresh watchlist).
 - Edit capital (`capital`) and number of stocks (`n_stocks`) at the bottom of each script.
 
+## How stocks are picked (v2, Oct 2026)
+
+1. **Trend runs on the whole universe every day** (prices only). Each stock gets a stage:
+   - **Confirmed uptrend**: close > 50DMA > 200DMA, 50DMA rising (vs 10 days ago), 200DMA rising (vs 20 days ago).
+   - **Emerging**: close above a rising 50DMA and above the 200DMA, and the 50DMA either crossed the 200DMA in
+     the last 30 sessions, is within 3% below it, or is above it while the 200DMA is still flat.
+   - **Pullback in uptrend**: 50DMA > 200DMA, both rising, close dipped to between the two.
+   - **Stalling** / **Downtrend**: everything else.
+2. **Fundamentals are scored, not gated.** Every rule in sections 2-3 (ROCE/ROE, growth, debt, cash conversion,
+   quarterly growth and acceleration) feeds the quality and growth scores. Score = 40% quality + 30% growth +
+   30% momentum (6m return, 3m vs index, distance from 52w high), as percentiles across the universe.
+3. **Entry gates**: stage must be confirmed or emerging; valuation (section 5, incl. positive EPS and P/E < 100)
+   must pass. US also keeps 4.4-4.7 (52w range, relative strength, beat the index) as gates
+   (`trend_extra_gates`); India uses them only in the score. The fresh golden cross (4.3) is a tag, not a filter.
+4. **Entry setups**: 50-day base breakout on volume, pullback to the 50DMA, or (new) pullback to a rising 20DMA.
+   Candidates are ranked by score.
+
+Sheet tabs: **Momentum** lists every stock in a confirmed/emerging uptrend or pullback with its stage, scores
+and which fundamental rules it misses. **Watchlist** carries the full write-up for the top 25 by score. In
+**Runs**, "Watchlist" now counts stocks in a confirmed/emerging uptrend, and added/removed = stocks that
+entered/left that list since the previous session.
+
+`python backtest.py <market> --variant legacy` replays the rules from before v2 for comparison.
+
 ## Daily use
 
 Each run processes the previous session's close and writes `reports/<market>/<date>.md`:
@@ -50,5 +74,5 @@ Data comes from Yahoo Finance through `yfinance`. These gaps are flagged, not hi
 
 ## Files it keeps
 
-`data/<market>/`: `universe.csv`, `watchlist.csv` (passed), `watchlist_full.csv` (every stock with every rule
+`data/<market>/`: `universe.csv`, `watchlist.csv` (fundamentals: >= 75% of rules pass), `watchlist_full.csv` (every stock with every rule
 value), `positions.csv`, `signals.csv`, `missed.csv`, `state.json` (last session processed, cooldowns).

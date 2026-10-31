@@ -40,13 +40,35 @@ def frames(px, tickers):
 
 
 VARIANTS = {
-    "current": "Rules as configured for this market",
+    "current": "v2 rules: confirmed/emerging trend stages, 20DMA pullback entries, gates as configured",
+    "legacy": "Rules before v2 (Oct 2026): fresh-cross per config, 4.4-4.7 as gates, no 20DMA pullback",
     "no_fresh": "Fix 1: drop 4.3 (uptrend no longer has to be new)",
     "dip_ok": "Fix 1 + Fix 2: drop 4.3, and allow a dip below the 50DMA while above the 200DMA",
 }
 
 
 def trend_mask(F, bench_close, cfg, variant="current"):
+    if variant == "current":
+        return trend_mask_v2(F, bench_close, cfg)
+    return trend_mask_legacy(F, bench_close, cfg, variant)
+
+
+def trend_mask_v2(F, bench_close, cfg):
+    c, h, l = F["Close"], F["High"], F["Low"]
+    T = qc.trend_stages(c, cfg)
+    m = T["stage"].isin(qc.UPTREND) & (c.notna().cumsum() >= 260)
+    r126 = c / c.shift(126) - 1
+    pct = r126.rank(axis=1, pct=True)
+    if cfg.trend_extra_gates:
+        lo52 = l.rolling(252, min_periods=200).min()
+        hi52 = h.rolling(252, min_periods=200).max()
+        r63 = c / c.shift(63) - 1
+        b63 = (bench_close / bench_close.shift(63) - 1).reindex(c.index).ffill()
+        m = m & (c >= 1.30 * lo52) & (c >= 0.75 * hi52) & (pct >= 1 - cfg.rs_top_pct) & r63.gt(b63, axis=0)
+    return m.fillna(False), T["s50"], pct
+
+
+def trend_mask_legacy(F, bench_close, cfg, variant="legacy"):
     c, h, l = F["Close"], F["High"], F["Low"]
     s50, s200 = c.rolling(50, min_periods=50).mean(), c.rolling(200, min_periods=200).mean()
     above = (s50 > s200).astype(float).where(s200.notna())
@@ -59,7 +81,7 @@ def trend_mask(F, bench_close, cfg, variant="current"):
     r63 = c / c.shift(63) - 1
     b63 = (bench_close / bench_close.shift(63) - 1).reindex(c.index).ffill()
     hist_ok = c.notna().cumsum() >= 260
-    if variant in ("no_fresh", "dip_ok") or not cfg.require_fresh_cross:
+    if variant in ("no_fresh", "dip_ok") or not cfg.require_fresh_cross:  # "legacy" follows the config
         cross65 = pd.DataFrame(True, index=c.index, columns=c.columns)
     price_ok = (c > s200) if variant == "dip_ok" else (c > s50)
     m = (price_ok & (s50 > s200) & (s200 > s200.shift(20)) & cross65 &
@@ -120,6 +142,8 @@ def main():
     ap.add_argument("--variant", choices=list(VARIANTS), default="current")
     a = ap.parse_args()
     cfg = load_cfg(a.market)
+    if a.variant != "current":
+        cfg.pullback20 = False      # the 20DMA pullback entry only exists from v2
     out = Path(__file__).resolve().parent / "backtest" / a.market
     if a.variant != "current":
         out = out / a.variant

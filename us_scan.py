@@ -43,6 +43,9 @@ CONFIG = Config(
     # Commission-free broker; allow ~0.05% for spread
     cost_pct=0.0005,
     cost_fixed=0,
+    # Fresh golden cross (4.3) is now a tag ("emerging"), not a filter. 52w range, relative strength and
+    # beat-the-index (4.4-4.7) remain entry gates for the US for now.
+    trend_extra_gates=True,
 )
 
 if __name__ == "__main__":

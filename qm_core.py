@@ -83,7 +83,12 @@ class Config:
 
     # Trend (4.x)
     rs_top_pct: float = 0.30
-    require_fresh_cross: bool = True  # 4.3: golden cross within last 65 sessions (False = any uptrend age)
+    require_fresh_cross: bool = True  # legacy 4.3 gate; only the backtest's "legacy" variant uses it now
+    trend_extra_gates: bool = True    # 4.4-4.7 (52w range, RS, beat index) as gates; False = score inputs only
+    emerging_cross_days: int = 30     # 50/200 cross this recent = "emerging"
+    emerging_gap_pct: float = 0.03    # 50DMA within this % below the 200DMA = "emerging"
+    pullback20: bool = True           # 6B2: allow pullback entries to the 20DMA
+    watchlist_tab_top: int = 25       # Watchlist tab: top-scored stocks in an uptrend, with full write-up
 
     # Housekeeping
     watchlist_max_age_days: int = 7
@@ -194,11 +199,14 @@ def _yoy(q: pd.Series) -> list:
     return out
 
 
-def _rule(rule, name, value, threshold, ok):
+def _rule(rule, name, value, threshold, ok, gate=True):
     if isinstance(value, (np.floating, np.integer)):
         value = float(value)
-    return {"rule": rule, "name": name, "value": value, "threshold": threshold,
-            "ok": None if ok is None else bool(ok)}
+    r = {"rule": rule, "name": name, "value": value, "threshold": threshold,
+         "ok": None if ok is None else bool(ok)}
+    if not gate:
+        r["gate"] = False
+    return r
 
 
 def _fmt(v, pct=False):
@@ -226,6 +234,39 @@ def _passes(rules, strict_missing):
 
 def _unverified(rules):
     return [r["rule"] for r in rules if r["ok"] is None]
+
+
+def _gates(rules):
+    return [r for r in rules if r.get("gate", True)]
+
+
+def fund_summary(rules) -> dict:
+    """Fundamentals are scored, not gated: how many rules pass, and which ones miss."""
+    if isinstance(rules, str):
+        try:
+            rules = json.loads(rules)
+        except Exception:
+            rules = None
+    if not isinstance(rules, list) or not rules:
+        return {"has_fund": False, "fund_ok": 0, "fund_known": 0, "fund_rate": np.nan, "fund_misses": ""}
+    known = [r for r in rules if r["ok"] is not None]
+    ok = sum(1 for r in known if r["ok"])
+    return {"has_fund": True, "fund_ok": ok, "fund_known": len(known),
+            "fund_rate": ok / len(known) if known else np.nan,
+            "fund_misses": ",".join(r["rule"] for r in rules if r["ok"] is False)}
+
+
+def apply_fund_summary(wl: pd.DataFrame) -> pd.DataFrame:
+    """Adds score inputs from each stock's rule results. `passed` now means: fundamentals are on file."""
+    if not len(wl):
+        return wl
+    wl = wl.copy()
+    rules = wl["rules"] if "rules" in wl else pd.Series([None] * len(wl), index=wl.index)
+    summ = pd.DataFrame([fund_summary(r) for r in rules], index=wl.index)
+    for col in summ:
+        wl[col] = summ[col]
+    wl["passed"] = summ["has_fund"]
+    return wl
 
 
 # --------------------------------------------------------------------------- #
@@ -347,7 +388,7 @@ def evaluate_fundamentals(cfg: Config, ticker: str, sector: str, f: dict,
     return {
         "ticker": ticker, "sector": sector, "is_financial": is_fin, "is_cyclical": is_cyc,
         "no_data": not info.get("marketCap") and years == 0,
-        "passed": _passes(rules, cfg.strict_missing), "unverified": ",".join(_unverified(rules)),
+        "passed": True, "unverified": ",".join(_unverified(rules)),
         "quality_metric": quality_metric, "ocf_np": ocf_np, "de": de,
         "q_sales_yoy": last(rev_yoy), "q_profit_yoy": last(np_yoy), "accel": accel,
         "decel_2q": decel_2q, "eps_ttm": eps_ttm, "median_pe": median_pe,
@@ -389,26 +430,81 @@ def build_watchlist(cfg: Config, src, universe: pd.DataFrame, prices: dict,
 # --------------------------------------------------------------------------- #
 
 
+STAGE_LABEL = {"confirmed": "Confirmed uptrend", "emerging": "Emerging", "pullback": "Pullback in uptrend",
+               "stalling": "Stalling", "downtrend": "Downtrend", "": "Not enough history"}
+UPTREND = ("confirmed", "emerging")
+
+
+def trend_stages(c: pd.DataFrame, cfg: Config) -> dict:
+    """Classify every stock on every day (columns = stocks). Shared by the daily scan and the backtest.
+
+    confirmed: close > 50DMA > 200DMA, 50DMA rising (vs 10d), 200DMA rising (vs 20d), cross older than N sessions
+    emerging:  close above a rising 50DMA and above the 200DMA, and the 50DMA either crossed the 200DMA
+               in the last N sessions, sits within a few % below it, or is above it while the 200DMA is still flat
+    pullback:  50DMA > 200DMA, both rising, close dipped to between the 200DMA and the 50DMA
+    stalling:  50DMA > 200DMA but none of the above (usually the 50DMA has flattened)
+    downtrend: everything else
+    """
+    s20 = c.rolling(20, min_periods=20).mean()
+    s50 = c.rolling(50, min_periods=50).mean()
+    s200 = c.rolling(200, min_periods=200).mean()
+    r50 = s50 > s50.shift(10)
+    r200 = s200 > s200.shift(20)
+    valid = s200.shift(20).notna() & s50.shift(10).notna()
+    above = s50 > s200
+    cross = above & ~above.shift(1, fill_value=False) & s200.shift(1).notna()
+    pos = np.arange(len(c), dtype=float)[:, None] * np.ones((1, c.shape[1]))
+    last = pd.DataFrame(np.where(cross.values, pos, np.nan), index=c.index, columns=c.columns).ffill()
+    age = (pd.DataFrame(pos, index=c.index, columns=c.columns) - last).where(above)
+    fresh = above & age.le(cfg.emerging_cross_days)
+    above50 = c > s50
+    confirmed = above50 & above & r50 & r200 & ~fresh
+    emerging = above50 & (c > s200) & r50 & ((~above & (s50 >= (1 - cfg.emerging_gap_pct) * s200)) |
+                                              fresh | (above & ~r200))
+    pullback = above & r50 & r200 & (c <= s50) & (c > s200)
+    stalling = above
+    stage = pd.DataFrame(np.select([~valid.values, confirmed.values, emerging.values, pullback.values, stalling.values],
+                                   ["", "confirmed", "emerging", "pullback", "stalling"], "downtrend"),
+                         index=c.index, columns=c.columns)
+    return {"stage": stage, "s20": s20, "s50": s50, "s200": s200, "r50": r50, "r200": r200,
+            "cross_age": age, "fresh": fresh}
+
+
 def trend_rules(d: pd.DataFrame, rs_pct: float | None, ret63: float, bench63: float, cfg: Config):
     c, lo, hi = d["Close"], d["Low"], d["High"]
-    s50, s200 = c.rolling(50).mean(), c.rolling(200).mean()
-    above = s50 > s200
-    cross = (above & ~above.shift(1, fill_value=True)).iloc[-65:].any()
+    T = trend_stages(c.to_frame("x"), cfg)
+    g = lambda k, i=-1: T[k]["x"].iloc[i]
+    stage, s20, s50, s200 = g("stage"), g("s20"), g("s50"), g("s200")
+    close = float(c.iloc[-1])
+    age = g("cross_age")
     lo52, hi52 = lo.iloc[-252:].min(), hi.iloc[-252:].max()
+    if s50 > s200:
+        cross_txt = (f"crossed {int(age)} sessions ago" if not pd.isna(age) else "above for 1y+")
+    else:
+        cross_txt = f"50DMA {s50 / s200 - 1:+.1%} vs 200DMA"
+    info = {"trend_stage": stage, "s20": float(s20), "s50": float(s50), "s200": float(s200),
+            "s200_20": float(T["s200"]["x"].iloc[-21]), "cross_txt": cross_txt,
+            "cross_age": None if pd.isna(age) else int(age), "fresh_cross": bool(g("fresh")),
+            "ext20": close / s20 - 1, "ext50": close / s50 - 1, "from_hi52": close / hi52,
+            "from_lo52": close / lo52}
+    xg = cfg.trend_extra_gates
     rules = [
-        _rule("4.1", "Close > 50DMA > 200DMA", f"{c.iloc[-1]:.2f} / {s50.iloc[-1]:.2f} / {s200.iloc[-1]:.2f}",
-              "ordered", bool(c.iloc[-1] > s50.iloc[-1] > s200.iloc[-1])),
-        _rule("4.2", "200DMA rising (vs 20d ago)", f"{s200.iloc[-1]:.2f} vs {s200.iloc[-21]:.2f}",
-              "higher", bool(s200.iloc[-1] > s200.iloc[-21])),
-        *([_rule("4.3", "50/200 golden cross in last 65d", bool(cross), True, bool(cross))]
-          if cfg.require_fresh_cross else []),
-        _rule("4.4", "Close / 52w low", c.iloc[-1] / lo52, 1.30, bool(c.iloc[-1] >= 1.30 * lo52)),
-        _rule("4.5", "Close / 52w high", c.iloc[-1] / hi52, 0.75, bool(c.iloc[-1] >= 0.75 * hi52)),
+        _rule("4.1", "Trend stage confirmed or emerging", STAGE_LABEL.get(stage, stage), "confirmed/emerging",
+              stage in UPTREND),
+        _rule("4.2", "50DMA rising (vs 10d ago)", f"{s50:.2f} vs {T['s50']['x'].iloc[-11]:.2f}", "higher",
+              bool(g("r50")), gate=False),
+        _rule("4.2b", "200DMA rising (vs 20d ago)", f"{s200:.2f} vs {info['s200_20']:.2f}", "higher",
+              bool(g("r200")), gate=False),
+        _rule("4.3", "50/200 cross (fresh = tag, not a filter)", cross_txt, f"<= {cfg.emerging_cross_days} sessions",
+              info["fresh_cross"], gate=False),
+        _rule("4.4", "Close / 52w low", close / lo52, 1.30, bool(close >= 1.30 * lo52), gate=xg),
+        _rule("4.5", "Close / 52w high", close / hi52, 0.75, bool(close >= 0.75 * hi52), gate=xg),
         _rule("4.6", "6m return percentile", rs_pct, 1 - cfg.rs_top_pct,
-              None if rs_pct is None else rs_pct >= 1 - cfg.rs_top_pct),
-        _rule("4.7", "3m return vs benchmark", f"{ret63:.1%} vs {bench63:.1%}", "higher", bool(ret63 > bench63)),
+              None if rs_pct is None else rs_pct >= 1 - cfg.rs_top_pct, gate=xg),
+        _rule("4.7", "3m return vs benchmark", f"{ret63:.1%} vs {bench63:.1%}", "higher", bool(ret63 > bench63),
+              gate=xg),
     ]
-    return rules, s50
+    return rules, T["s50"]["x"], info
 
 
 def valuation_rules(price: float, w: dict, cfg: Config):
@@ -459,7 +555,7 @@ def entry_setup(d: pd.DataFrame, s50: pd.Series, cfg: Config):
             return {"setup": "breakout", "structure_low": base["base_low"],
                     "limit": piv * (1 + cfg.max_chase_pct),
                     "detail": f"{base['length']}d base, pivot {piv:.2f}, vol {v.iloc[-1] / vol50:.1f}x avg"}
-    # 6B pullback (last 5 sessions before today)
+    # 6B pullback to the 50DMA (last 5 sessions before today)
     w = d.iloc[-6:-1]
     near = (w["Low"] <= s50.iloc[-6:-1] * 1.03).any()
     dry = w["Volume"].mean() < vol50
@@ -468,6 +564,17 @@ def entry_setup(d: pd.DataFrame, s50: pd.Series, cfg: Config):
         return {"setup": "pullback", "structure_low": float(w["Low"].min()),
                 "limit": c.iloc[-1] * (1 + cfg.max_chase_pct),
                 "detail": f"touched 50DMA zone, pullback vol {w['Volume'].mean() / vol50:.2f}x avg, closed above prior high"}
+    # 6B2 pullback to a rising 20DMA (strong trends often never reach the 50DMA)
+    if cfg.pullback20:
+        s20 = c.rolling(20).mean()
+        w3 = d.iloc[-4:-1]
+        near20 = (w3["Low"] <= s20.iloc[-4:-1] * 1.01).any()
+        rising20 = s20.iloc[-1] > s20.iloc[-6]
+        if near20 and rising20 and bounce and c.iloc[-1] > s20.iloc[-1] and w3["Volume"].mean() < vol50:
+            return {"setup": "pullback20", "structure_low": float(w["Low"].min()),
+                    "limit": c.iloc[-1] * (1 + cfg.max_chase_pct),
+                    "detail": f"dipped to rising 20DMA, pullback vol {w3['Volume'].mean() / vol50:.2f}x avg, "
+                              "closed above prior high"}
     return None
 
 
@@ -477,10 +584,16 @@ def entry_setup(d: pd.DataFrame, s50: pd.Series, cfg: Config):
 
 
 def add_scores(df: pd.DataFrame) -> pd.DataFrame:
+    """All fundamentals are score inputs (no fundamental gate). Percentiles are across the whole universe."""
+    df = df.copy()
+    for col in ["quality_metric", "ocf_np", "de", "q_sales_yoy", "q_profit_yoy", "accel", "fund_rate",
+                "ret126", "excess63", "from_hi52"]:
+        df[col] = pd.to_numeric(df.get(col), errors="coerce")
     pr = lambda s, asc=True: s.rank(pct=True, ascending=asc).fillna(0.5)
-    q = (pr(df["quality_metric"]) + pr(df["ocf_np"]) + pr(df["de"], asc=False)) / 3
+    rate = df["fund_rate"].fillna(0.5)
+    q = (pr(df["quality_metric"]) + pr(df["ocf_np"]) + pr(df["de"], asc=False) + rate) / 4
     g = (pr(df["q_sales_yoy"]) + pr(df["q_profit_yoy"]) + pr(df["accel"])) / 3
-    m = (pr(df["ret126"]) + pr(df["excess63"])) / 2
+    m = (pr(df["ret126"]) + pr(df["excess63"]) + pr(df["from_hi52"])) / 3
     df = df.copy()
     df["score_quality"], df["score_growth"], df["score_momentum"] = q, g, m
     df["score"] = 0.4 * q + 0.3 * g + 0.3 * m
@@ -633,7 +746,6 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
     wl_path = cfg.data_dir / "watchlist_full.csv"
     need_full = rebuild or not wl_path.exists() or age_days("watchlist_built") >= cfg.watchlist_max_age_days
     old_wl = pd.read_csv(wl_path) if wl_path.exists() else pd.DataFrame()
-    old_pass = set(old_wl[old_wl.passed == True].ticker) if len(old_wl) else set()
     if need_full:
         fresh = build_watchlist(cfg, src, universe, px, log=log)
         # If Yahoo returned nothing for a stock this time, keep its last good evaluation
@@ -648,9 +760,9 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
         # Refresh stocks that just reported results, plus stocks Yahoo returned no data for
         due = []
         if "next_earnings" in wl and len(wl):
-            ne = pd.to_datetime(wl["next_earnings"], errors="coerce").dt.date
-            fa = pd.to_datetime(wl["fetched_at"], errors="coerce").dt.date
-            due = list(wl.ticker[(ne <= bar_date) & (fa <= ne)])
+            ne = pd.to_datetime(wl["next_earnings"], errors="coerce").dt.normalize()
+            fa = pd.to_datetime(wl["fetched_at"], errors="coerce", utc=True).dt.tz_localize(None).dt.normalize()
+            due = list(wl.ticker[(ne <= pd.Timestamp(bar_date)) & (fa <= ne)])
         if "no_data" in wl:
             due += list(wl.ticker[wl.no_data == True])[:cfg.refetch_cap]
         due = sorted(set(due))
@@ -660,11 +772,12 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
             keep_old = wl[wl.ticker.isin(fresh.ticker[fresh.no_data == True]) & (wl.get("no_data") != True)]
             fresh = fresh[~fresh.ticker.isin(keep_old.ticker)]
             wl = pd.concat([wl[~wl.ticker.isin(fresh.ticker)], fresh], ignore_index=True)
+    wl = apply_fund_summary(wl)
     wl.to_csv(wl_path, index=False)
-    passed = wl[wl.passed == True].copy()
-    passed.drop(columns=["rules"], errors="ignore").to_csv(cfg.data_dir / "watchlist.csv", index=False)
-    new_pass = set(passed.ticker)
-    wl_added, wl_removed = sorted(new_pass - old_pass), sorted(old_pass - new_pass) if old_pass else []
+    passed = wl[wl.passed == True].copy()        # = fundamentals on file (scored, not gated)
+    # watchlist.csv = strong fundamentals (>= 75% of rules pass); the backtest uses it as its look-ahead list
+    strong = passed[pd.to_numeric(passed["fund_rate"], errors="coerce") >= 0.75] if len(passed) else passed
+    strong.drop(columns=["rules"], errors="ignore").to_csv(cfg.data_dir / "watchlist.csv", index=False)
 
     # ---------------- Layer C: positions ---------------- #
     exits, stop_updates, held_notes = [], [], []
@@ -704,54 +817,75 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
                           f"{float(positions.loc[i, 'stop']):.2f}, {days_held} sessions held")
     positions.to_csv(cfg.data_dir / "positions.csv", index=False)
 
-    # ---------------- Layer B: signals ---------------- #
+    # ---------------- Layer B: trend on the whole universe, then signals ---------------- #
     ret = lambda d, n: d["Close"].iloc[-1] / d["Close"].iloc[-1 - n] - 1 if len(d) > n else np.nan
     uni_ret126 = pd.Series({t: ret(px[t], 126) for t in universe.ticker if t in px}).dropna()
     pct126 = uni_ret126.rank(pct=True)
     bench63 = ret(bench, 63)
+    wl_map = {r["ticker"]: r for r in wl.to_dict("records")} if len(wl) else {}
+    sector_of = dict(zip(universe.ticker, universe.sector))
 
-    cands, evals, status = [], [], {}
-    first_fail = lambda rules: next((f"{r['rule']} {r['name']}" for r in rules if r["ok"] is not True), "")
-    for w in passed.to_dict("records"):
-        t = w["ticker"]
+    rows, trend = [], {}
+    for t in universe.ticker:
         d = px.get(t)
         if d is None or len(d) < 260:
-            status[t] = {"stage": "no price data"}
             continue
         r126, r63 = ret(d, 126), ret(d, 63)
-        t_rules, s50 = trend_rules(d, pct126.get(t), r63, bench63, cfg)
-        w.update({"ret126": r126, "excess63": r63 - bench63})
-        evals.append(w)
+        t_rules, s50, info = trend_rules(d, pct126.get(t), r63, bench63, cfg)
+        trend[t] = (t_rules, s50, info)
+        w = dict(wl_map.get(t) or {"ticker": t, "sector": sector_of.get(t, ""), "passed": False})
+        w.update({"ret126": r126, "excess63": r63 - bench63, "from_hi52": info["from_hi52"]})
+        rows.append(w)
+    scored = add_scores(pd.DataFrame(rows)) if rows else pd.DataFrame()
+    score_cols = ["score", "score_quality", "score_growth", "score_momentum"]
+    score_map = scored.set_index("ticker")[score_cols].to_dict("index") if len(scored) else {}
+
+    # Momentum list = every stock in a confirmed or emerging uptrend; compare with the previous session
+    stages_now = {t: v[2]["trend_stage"] for t, v in trend.items()}
+    in_trend = {t for t, st in stages_now.items() if st in UPTREND}
+    prev_stages = state.get("stages") or {}
+    prev_trend = {t for t, st in prev_stages.items() if st in UPTREND}
+    wl_added = sorted(in_trend - prev_trend) if prev_stages else []
+    wl_removed = sorted(prev_trend - in_trend) if prev_stages else []
+    newly = {t: prev_stages.get(t, "") for t in wl_added}
+    state["stages"] = stages_now
+
+    cands, status = [], {}
+    first_fail = lambda rules: next((f"{r['rule']} {r['name']}" for r in _gates(rules) if r["ok"] is not True), "")
+    for w in rows:
+        t = w["ticker"]
+        d = px[t]
+        t_rules, s50, info = trend[t]
+        w.update(score_map.get(t, {}))
         close = float(d["Close"].iloc[-1])
-        v_rules = valuation_rules(close, w, cfg)
-        s200 = d["Close"].rolling(200).mean()
         base = find_base(d)
-        status[t] = {"close": round(close, 2), "rs_pct": pct126.get(t), "pe": v_rules[0]["value"],
-                     "peg": v_rules[2]["value"], "pe_rel": v_rules[1]["value"],
-                     "s50": float(s50.iloc[-1]), "s200": float(s200.iloc[-1]), "s200_20": float(s200.iloc[-21]),
-                     "vol50": float(d["Volume"].iloc[-51:-1].mean()),
-                     "pivot": base["pivot"] if base else float(d["High"].iloc[-60:].max()),
-                     "base_len": base["length"] if base else None}
-        if not _passes(t_rules, True):
-            status[t]["stage"] = "waiting: trend - " + first_fail(t_rules)
+        st = {"close": round(close, 2), "rs_pct": pct126.get(t), **info,
+              "vol50": float(d["Volume"].iloc[-51:-1].mean()),
+              "pivot": base["pivot"] if base else float(d["High"].iloc[-60:].max()),
+              "base_len": base["length"] if base else None, "excess63": w["excess63"]}
+        status[t] = st
+        if not w.get("passed"):
+            st["stage"] = "no fundamentals on file yet (retried each run)"
+            continue
+        v_rules = valuation_rules(close, w, cfg)
+        st.update({"pe": v_rules[0]["value"], "peg": v_rules[2]["value"], "pe_rel": v_rules[1]["value"]})
+        if not _passes(_gates(t_rules), True):
+            st["stage"] = "waiting: trend - " + (STAGE_LABEL.get(info["trend_stage"], "")
+                                                 if info["trend_stage"] not in UPTREND else first_fail(t_rules))
             continue
         if v_rules[-1]["ok"] is False:
-            status[t]["stage"] = "waiting: valuation - " + first_fail(v_rules)
+            st["stage"] = "waiting: valuation - " + first_fail(v_rules)
             continue
         setup = entry_setup(d, s50, cfg)
         if not setup:
-            status[t]["stage"] = "in trend, waiting for breakout/pullback entry"
+            st["stage"] = f"{STAGE_LABEL[info['trend_stage']]}, waiting for breakout/pullback entry"
             continue
-        status[t]["stage"] = "SIGNAL: " + setup["setup"]
+        st["stage"] = "SIGNAL: " + setup["setup"]
         cands.append({**w, "close": close, "setup": setup,
                       "proof": json.loads(w.get("rules") or "[]") + t_rules + v_rules})
 
     buys, missed = [], []
     if cands:
-        scored = add_scores(pd.DataFrame(evals))
-        score_map = scored.set_index("ticker")[["score", "score_quality", "score_growth", "score_momentum"]]
-        for c in cands:
-            c.update(score_map.loc[c["ticker"]].to_dict())
         cands.sort(key=lambda c: c["score"], reverse=True)
 
         held = set(open_pos.ticker) - {e["ticker"] for e in exits}
@@ -796,23 +930,25 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
                ["date", "ticker", "setup"])
 
     # ---------------- Report (section 12) ---------------- #
+    mom = momentum_rows(trend, status, wl_map, score_map, sector_of)
     report = render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, held_notes,
-                           wl_added, wl_removed, len(passed), len(universe), missed, stale_note, need_full,
-                           int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0)
+                           wl_added, wl_removed, len(in_trend), len(universe), missed, stale_note, need_full,
+                           int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0,
+                           mom=mom, newly=newly)
     path = cfg.report_dir / f"{bar_date}.md"
     path.write_text(report)
     append_csv(cfg.data_dir / "runs.csv", [{
         "session": str(bar_date), "run_at": fetched_at, "universe": len(universe),
-        "watchlist": len(passed), "buys": len(buys), "exits": len(exits),
+        "watchlist": len(in_trend), "buys": len(buys), "exits": len(exits),
         "stop_updates": len(stop_updates), "skipped_signals": len(missed),
         "missing_fundamentals": int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0,
-        "watchlist_added": " ".join(wl_added[:50]) if old_pass else "",
+        "watchlist_added": " ".join(wl_added[:50]),
         "watchlist_removed": " ".join(wl_removed[:50]),
         "notes": stale_note}], ["session"])
     peers = sector_peer_stats(wl, px)
-    write_sheet_rows(cfg, bar_date, fetched_at, len(universe), passed, buys, exits, stop_updates,
-                     missed, wl_added if old_pass else [], wl_removed, stale_note, status,
-                     int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0, peers)
+    write_sheet_rows(cfg, bar_date, fetched_at, len(universe), mom, buys, exits, stop_updates,
+                     missed, wl_added, wl_removed, stale_note, status,
+                     int((wl.get("no_data") == True).sum()) if "no_data" in wl else 0, peers, wl_map)
     state["last_bar_date"] = str(bar_date)
     save_state(cfg, state)
     log(report)
@@ -822,6 +958,10 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
 SHEET_HEADERS = {
     "Runs": ["Market", "Session", "Run at", "Universe", "Watchlist", "Buys", "Exits", "Stop updates",
              "Skipped signals", "Missing fundamentals", "Watchlist added", "Watchlist removed", "Notes", "Report"],
+    "Momentum": ["Market", "Session", "Ticker", "Sector", "Trend stage", "New today", "50/200 cross",
+                 "Score", "Quality score", "Growth score", "Momentum score", "6m return pctile", "3m vs index",
+                 "% from 20DMA", "% from 50DMA", "% from 52w high", "Fund. rules passed", "Rules missed",
+                 "Status today", "Last close", "Screener.in", "Yahoo Finance"],
     "Signals": ["Market", "Session", "Ticker", "Sector", "Setup", "Setup detail", "Score", "Quality score",
                 "Growth score", "Momentum score", "Last close", "Limit (max entry)", "Stop", "Disaster stop",
                 "Shares", "Value", "ROCE/ROE avg", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
@@ -835,8 +975,27 @@ SHEET_HEADERS = {
                   "6m return pctile", "P/E", "PEG", "Next results", "Unverified rules",
                   "Screener.in", "Yahoo Finance"],
 }
-# Link columns sit at the end of each tab so rows logged before they existed stay aligned.
+# New columns sit at the end of each tab so rows logged before they existed stay aligned.
 SHEET_HEADERS["Signals"] += ["Screener.in", "Yahoo Finance"]
+# From v2 "Watchlist" in Runs = stocks in a confirmed/emerging uptrend; added/removed = entered/left that list.
+SHEET_HEADERS["Runs"] += ["Confirmed", "Emerging", "Pullback in uptrend"]
+SHEET_HEADERS["Watchlist"] += ["Trend stage", "Score", "Quality score", "Growth score", "Momentum score",
+                               "Fund. rules passed", "Rules missed"]
+STAGE_ORDER = {"emerging": 0, "confirmed": 1, "pullback": 2}
+
+
+def momentum_rows(trend, status, wl_map, score_map, sector_of):
+    """Every stock in a confirmed or emerging uptrend, or pulling back inside one, best score first."""
+    out = []
+    for t, (_, _, info) in trend.items():
+        if info["trend_stage"] not in STAGE_ORDER:
+            continue
+        w = dict(wl_map.get(t) or {})
+        w.update({"ticker": t, "sector": w.get("sector") or sector_of.get(t, ""), **score_map.get(t, {})})
+        out.append({"ticker": t, "stage": info["trend_stage"], "w": w, "st": status.get(t, {}),
+                    "score": score_map.get(t, {}).get("score", 0.0)})
+    out.sort(key=lambda r: -(r["score"] or 0))
+    return out
 
 
 def stock_links(ticker: str) -> tuple[str, str]:
@@ -865,9 +1024,8 @@ def _num(v, nd=4):
 
 
 TREND_HINTS = {
-    "4.1": "Price is below its 50/200-day averages: wait for it to climb back above both",
+    "4.1": "Not in a confirmed or emerging uptrend yet",
     "4.2": "Long-term (200-day) trend still pointing down: wait for it to turn up",
-    "4.3": "Uptrend isn't a fresh one: wait for a new base or a clean pullback",
     "4.4": "Hasn't risen enough off its 1-year low yet",
     "4.5": "Too far below its 1-year high: needs to recover more first",
     "4.6": "Has lagged most stocks over 6 months: wait for it to start leading",
@@ -952,24 +1110,29 @@ def next_text(cfg, w, st, bar_date):
     vol_need = f"{1.5 * vol:,.0f}" if _ok(vol) else "1.5x average"
     if stage.startswith("SIGNAL"):
         nxt.append("Buy setup triggered: see the Signals tab for limit, stop and size")
-    elif stage.startswith("in trend"):
+    elif "waiting for breakout/pullback" in stage:
+        s20 = st.get("s20")
         nxt.append(f"Breakout trigger: close above {cur}{piv:,.0f} on volume > {vol_need} shares")
-        nxt.append(f"Or pullback trigger: dip to ~{cur}{s50:,.0f} (50-day avg), then close above the prior day's high")
+        if _ok(s20):
+            nxt.append(f"Or pullback trigger: dip to ~{cur}{s20:,.0f} (20-day avg) or ~{cur}{s50:,.0f} (50-day avg), "
+                       "then close above the prior day's high")
     elif stage.startswith("waiting: valuation"):
         nxt.append("Trend is fine but valuation fails: wait for the price or the P/E to cool")
-    else:
-        rule = stage.split(" - ")[-1].split(" ")[0] if " - " in stage else ""
-        if rule == "4.1" and _ok(s50) and _ok(s200):
-            nxt.append(f"Trend trigger: close above {cur}{max(s50, s200):,.0f} with the 50-day avg ({cur}{s50:,.0f}) "
-                       f"above the 200-day ({cur}{s200:,.0f})")
-        elif rule == "4.2" and _ok(s200):
-            nxt.append(f"Trend trigger: 200-day avg ({cur}{s200:,.0f}) must start rising "
-                       f"(it was {cur}{st.get('s200_20', 0):,.0f} 20 days ago)")
-        elif rule == "4.3":
-            nxt.append(f"Trend is old, not fresh: wait for a new 6-20 week base; breakout level ~{cur}{piv:,.0f}")
-        elif rule in ("4.4", "4.5", "4.6", "4.7"):
-            nxt.append("Momentum is weak vs other stocks: wait for it to start leading")
-    if (stage.startswith("SIGNAL") or stage.startswith("in trend")) and _ok(st.get("close")):
+    elif stage.startswith("waiting: trend"):
+        ts = st.get("trend_stage")
+        if ts == "pullback" and _ok(s50):
+            nxt.append(f"Uptrend intact, price dipped below the 50-day avg: trigger is a close back above {cur}{s50:,.0f}")
+        elif ts == "stalling":
+            nxt.append("50-day avg has flattened: wait for it to turn up again")
+        elif ts in UPTREND:
+            nxt.append("In an uptrend but lagging other stocks or the index: wait for it to start leading")
+        elif _ok(s50) and _ok(s200):
+            extra = (f", and the 50-day avg must rise to within 3% of the 200-day ({cur}{s200:,.0f})"
+                     if s50 < s200 else "")
+            nxt.append(f"Trend trigger: close above {cur}{max(s50, s200):,.0f} with the 50-day avg "
+                       f"({cur}{s50:,.0f}) turning up{extra}")
+    in_trend_wait = "waiting for breakout/pullback" in stage
+    if (stage.startswith("SIGNAL") or in_trend_wait) and _ok(st.get("close")):
         nxt.append(f"Risk plan if entered near {cur}{st['close']:,.0f}: stop no lower than {cur}{st['close'] * 0.92:,.0f} "
                    f"(-8%); at +15% ({cur}{st['close'] * 1.15:,.0f}) move stop to entry, then trail the 50-day avg")
     elif stage.startswith("waiting"):
@@ -999,16 +1162,32 @@ def next_text(cfg, w, st, bar_date):
     return "\n".join("• " + x for x in nxt)
 
 
-def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits, stop_updates, missed,
-                     wl_added, wl_removed, notes, status, n_no_data, peers=None):
+def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, stop_updates, missed,
+                     wl_added, wl_removed, notes, status, n_no_data, peers=None, wl_map=None):
     """Rows to append to the Google Sheet, one list per tab, saved as data/<market>/sheet_rows/<session>.json."""
     import os
     m, sess = cfg.market.upper(), str(bar_date)
     repo = os.environ.get("GITHUB_REPOSITORY")
     link = f"https://github.com/{repo}/blob/main/reports/{cfg.market}/{sess}.md" if repo else ""
     rows = {k: [] for k in SHEET_HEADERS}
-    rows["Runs"].append([m, sess, fetched_at, n_universe, len(passed), len(buys), len(exits), len(stop_updates),
-                         len(missed), n_no_data, " ".join(wl_added[:60]), " ".join(wl_removed[:60]), notes, link])
+    count = lambda stg: sum(1 for r in mom if r["stage"] == stg)
+    rows["Runs"].append([m, sess, fetched_at, n_universe, count("confirmed") + count("emerging"), len(buys),
+                         len(exits), len(stop_updates), len(missed), n_no_data, " ".join(wl_added[:60]),
+                         " ".join(wl_removed[:60]), notes, link,
+                         count("confirmed"), count("emerging"), count("pullback")])
+    new_today = set(wl_added)
+    pct = lambda v: _num(v * 100, 1) if _ok(v) else ""
+    for r in mom:
+        w, st, t = r["w"], r["st"], r["ticker"]
+        rows["Momentum"].append([
+            m, sess, t, w.get("sector", ""), STAGE_LABEL[r["stage"]], "yes" if t in new_today else "",
+            st.get("cross_txt", ""), _num(w.get("score"), 3), _num(w.get("score_quality"), 3),
+            _num(w.get("score_growth"), 3), _num(w.get("score_momentum"), 3), _num(st.get("rs_pct"), 3),
+            pct(st.get("excess63")), pct(st.get("ext20")), pct(st.get("ext50")),
+            pct(st.get("from_hi52") - 1 if _ok(st.get("from_hi52")) else None),
+            f"{int(w['fund_ok'])}/{int(w['fund_known'])}" if _ok(w.get("fund_known")) and w.get("fund_known") else "",
+            w.get("fund_misses") if _ok(w.get("fund_misses")) else "", st.get("stage", ""),
+            _num(st.get("close"), 2), *stock_links(t)])
     for b in buys:
         s, st = b["size"], status.get(b["ticker"], {})
         rows["Signals"].append([
@@ -1027,8 +1206,9 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits,
                                          f"{u['old']:.2f} -> {u['new']:.2f}: {u['why']}"])
     for x in missed:
         rows["Skipped signals"].append([m, sess, x["ticker"], x["setup"], x["score"], x["reason"]])
-    for w in passed.sort_values("ticker").to_dict("records"):
-        st = status.get(w["ticker"], {})
+    top = [r for r in mom if r["stage"] in UPTREND and r["w"].get("passed")][:cfg.watchlist_tab_top]
+    for r in top:
+        w, st = r["w"], r["st"]
         rows["Watchlist"].append([
             m, sess, w["ticker"], w.get("sector", ""), st.get("stage", ""), why_text(w, st),
             peers_text(w, (peers or {}).get(w["ticker"])), next_text(cfg, w, st, bar_date),
@@ -1037,18 +1217,24 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, passed, buys, exits,
             _num(w.get("q_sales_yoy")), _num(w.get("q_profit_yoy")), _num(w.get("accel")),
             _num(st.get("rs_pct"), 3), _num(st.get("pe"), 1), _num(st.get("peg"), 2),
             str(w.get("next_earnings") or "") if not pd.isna(w.get("next_earnings")) else "",
-            w.get("unverified") or "", *stock_links(w["ticker"])])
+            w.get("unverified") or "", *stock_links(w["ticker"]),
+            STAGE_LABEL[r["stage"]], _num(w.get("score"), 3), _num(w.get("score_quality"), 3),
+            _num(w.get("score_growth"), 3), _num(w.get("score_momentum"), 3),
+            f"{int(w['fund_ok'])}/{int(w['fund_known'])}" if _ok(w.get("fund_known")) else "",
+            w.get("fund_misses") if _ok(w.get("fund_misses")) else ""])
     out = cfg.data_dir / "sheet_rows"
     out.mkdir(exist_ok=True)
     (out / f"{sess}.json").write_text(json.dumps({"headers": SHEET_HEADERS, "rows": rows}, default=str, indent=1))
 
 
 def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, held_notes,
-                  wl_added, wl_removed, n_watch, n_universe, missed, stale_note, rebuilt, n_no_data=0):
+                  wl_added, wl_removed, n_watch, n_universe, missed, stale_note, rebuilt, n_no_data=0,
+                  mom=None, newly=None):
     cur = cfg.currency
+    mom = mom or []
     L = [f"# {cfg.market.upper()} Quality Momentum - signals from {bar_date} close", "",
          f"Data: {src.name}, fetched {fetched_at}. Universe {n_universe} stocks; "
-         f"watchlist {n_watch} ({'rebuilt today' if rebuilt else 'cached'})."
+         f"{n_watch} in a confirmed or emerging uptrend (fundamentals {'refreshed today' if rebuilt else 'cached'})."
          + (f" Fundamentals still missing for {n_no_data} stocks; they are retried each run." if n_no_data else ""),
          ""]
     if stale_note:
@@ -1079,6 +1265,8 @@ def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, hel
                     val = f"{cur}{r['value'] / cfg.mcap_div:,.0f}{cfg.mcap_label}"
                     thr = f"{cur}{r['threshold'] / cfg.mcap_div:,.0f}{cfg.mcap_label}"
                 res = {True: "pass", False: "FAIL", None: "unverified"}[r["ok"]]
+                if r.get("gate") is False or r["rule"][0] in "23":
+                    res = {True: "pass", False: "miss", None: "unverified"}[r["ok"]] + " (scored)"
                 L.append(f"| {r['rule']} | {r['name']} | {val} | {thr} | {res} |")
             if cfg.manual_checks:
                 link = cfg.research_url.format(symbol=b["ticker"].split(".")[0]) if cfg.research_url else ""
@@ -1103,12 +1291,30 @@ def render_report(cfg, bar_date, fetched_at, src, buys, exits, stop_updates, hel
     if held_notes:
         L += ["## Open positions", ""] + [f"- {h}" for h in held_notes] + [""]
 
+    if mom:
+        cnt = {k: sum(1 for r in mom if r["stage"] == k) for k in STAGE_ORDER}
+        L += ["## MOMENTUM", "",
+              f"Confirmed uptrend {cnt['confirmed']}, emerging {cnt['emerging']}, pullback in uptrend "
+              f"{cnt['pullback']}. Ranked by score (quality 40%, growth 30%, momentum 30%). Full list: Momentum tab.",
+              "", "| Ticker | Stage | Score | 50/200 cross | 6m RS pctile | % from 20DMA | Fund. rules missed | Status |",
+              "|---|---|---|---|---|---|---|---|"]
+        for stg in ("emerging", "confirmed"):
+            for r in [x for x in mom if x["stage"] == stg][:12]:
+                st, w = r["st"], r["w"]
+                rs = f"{st['rs_pct']:.0%}" if _ok(st.get("rs_pct")) else "n/a"
+                ext = f"{st['ext20']:+.1%}" if _ok(st.get("ext20")) else ""
+                miss = w.get("fund_misses") if _ok(w.get("fund_misses")) else ""
+                L.append(f"| {_md_ticker(r['ticker'])} | {STAGE_LABEL[stg]} | {r['score']:.2f} | "
+                         f"{st.get('cross_txt', '')} | {rs} | {ext} | {miss} | {st.get('stage', '')} |")
+        L.append("")
     if wl_added or wl_removed:
-        L += ["## WATCHLIST CHANGES", ""]
+        L += ["## UPTREND CHANGES SINCE LAST SESSION", ""]
         if wl_added:
-            L.append(f"- Added ({len(wl_added)}): {', '.join(_md_ticker(t) for t in wl_added[:30])}" + (" ..." if len(wl_added) > 30 else ""))
+            L.append(f"- Entered ({len(wl_added)}): " + ", ".join(
+                f"{_md_ticker(t)}" + (f" (was {STAGE_LABEL.get(newly.get(t), '?').lower()})" if newly and newly.get(t) else "")
+                for t in wl_added[:30]) + (" ..." if len(wl_added) > 30 else ""))
         if wl_removed:
-            L.append(f"- Removed ({len(wl_removed)}): {', '.join(wl_removed[:30])}" + (" ..." if len(wl_removed) > 30 else ""))
+            L.append(f"- Left ({len(wl_removed)}): {', '.join(wl_removed[:30])}" + (" ..." if len(wl_removed) > 30 else ""))
         L.append("")
 
     if missed:

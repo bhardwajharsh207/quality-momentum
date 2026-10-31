@@ -61,7 +61,10 @@ CONFIG = Config(
     cost_pct=0.0024,
     cost_fixed=16,
     # 4.3 off: backtest 2026-10-21 (30 months) showed ~6x more buys on watchlist stocks, slightly better avg trade
-    require_fresh_cross=False,
+    require_fresh_cross=False,      # legacy backtest variant only
+    # India trend rule: close > 50DMA > 200DMA, both rising (or emerging into that). 52w range, relative
+    # strength and beat-the-index (4.4-4.7) feed the momentum score instead of filtering stocks out.
+    trend_extra_gates=False,
 )
 
 if __name__ == "__main__":
