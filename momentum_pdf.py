@@ -229,7 +229,7 @@ def stock_block(fig, top, d, r, f, sig, cur):
     y = top - 0.212
     full, _ = action(r, sig, cur)
     for label, text in [("Trend", trend_line(r)), ("Business", business_line(r, f)), ("Action", full)]:
-        wr = textwrap.wrap(text, 112)[:2]
+        wr = textwrap.wrap(text, 100 if label == "Action" else 112)[:2]
         fig.text(0.07, y, label, fontsize=7.5, fontweight="bold", color=INK2 if label != "Action" else INK, va="top")
         fig.text(0.16, y, "\n".join(wr), fontsize=7.5, color=INK, va="top", linespacing=1.3,
                  fontweight="bold" if label == "Action" else "normal")
@@ -283,20 +283,24 @@ def main():
         sessions[m] = sess
         fund = load_fund(m)
         new, ongoing = pick(board, a.top)
-        px = src.prices(list(new["Ticker"]) + list(ongoing["Ticker"]), period="2y")
+        want = list(new["Ticker"]) + list(ongoing["Ticker"])
+        px = src.prices(want, period="2y")
+        missing = [t for t in want if t not in px]
+        if missing:                                         # Yahoo sometimes drops a few; retry once
+            px.update(src.prices(missing, period="2y"))
         label = "India" if m == "india" else "US"
+        cfg = importlib.import_module(f"{m}_scan").CONFIG
         for title, df in [(f"{label}: new momentum", new), (f"{label}: ongoing momentum", ongoing)]:
-            df = df[df["Ticker"].map(lambda t: t in px and len(px[t]) >= 252)]
-            sections.append((title, df, cur, sig))
-            cfg = importlib.import_module(f"{m}_scan").CONFIG
-            for _, r in df.iterrows():
-                # stage dates from the same prices the chart draws, so text and shading always agree
+            df = df[df["Ticker"].map(lambda t: t in px and len(px[t]) >= 252)].copy()
+            for i, r in df.iterrows():
+                # stage dates from the same prices the chart draws, so cover, text and shading agree
                 h = qc.stage_history(qc.trend_stages(px[r["Ticker"]]["Close"].to_frame("x"), cfg)["stage"]["x"])
-                r = r.copy()
                 if h["up_since"]:
-                    r["In uptrend since"], r["Days in uptrend"] = str(h["up_since"]), h["days_up"]
+                    df.at[i, "In uptrend since"], df.at[i, "Days in uptrend"] = str(h["up_since"]), h["days_up"]
                 if h["days_in_stage"]:
-                    r["Days in stage"] = h["days_in_stage"]
+                    df.at[i, "Days in stage"] = h["days_in_stage"]
+            sections.append((title, df, cur, sig))
+            for _, r in df.iterrows():
                 f = fund.loc[r["Ticker"]].to_dict() if r["Ticker"] in fund.index else None
                 blocks.append((title, px[r["Ticker"]], r, f, sig, cur))
     out = BASE / "reports" / "momentum"
