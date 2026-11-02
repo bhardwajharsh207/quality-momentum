@@ -130,6 +130,14 @@ a { color: var(--accent) }
 @keyframes sh { to { background-position: -200% 0 } }
 @media (prefers-reduced-motion: reduce) { .skel { animation: none } }
 
+
+/* Hover help + chart */
+.tip { border-bottom: 1px dotted var(--muted); cursor: help; position: relative; text-transform: none; letter-spacing: 0 }
+.tip:hover::after, .tip:focus::after { content: attr(data-tip); position: absolute; left: 0; top: 130%; z-index: 40; width: max-content; max-width: 260px;
+  background: var(--ink); color: var(--surface); font: 400 12.5px/1.4 var(--body); padding: 8px 10px; border-radius: 8px; white-space: normal; text-align: left; font-weight: 400 }
+.n .tip:hover::after, .n .tip:focus::after, .head .tip:nth-last-child(-n+4):hover::after { left: auto; right: 0 }
+.qa { color: var(--ink2); font-size: 13.5px; margin: -4px 0 10px }
+
 /* Drawer */
 .scrim { position: fixed; inset: 0; background: rgb(10 12 16 / .45); z-index: 20 }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 100%); background: var(--surface); z-index: 21;
@@ -241,6 +249,30 @@ const cur = () => state.market === "india" ? "₹" : "$";
 const money = (v) => v == null ? "—" : cur() + v.toLocaleString("en-IN", { maximumFractionDigits: v < 100 ? 2 : 0 });
 const pct = (v, signed = true, d = 0) => v == null ? "—" : (signed && v > 0 ? "+" : "") + (v * 100).toFixed(d) + "%";
 const sgn = (v) => v == null ? "" : v >= 0 ? "pos" : "neg";
+/* Plain-English hover help, from "How the stock scanner picks stocks" */
+const GLOSS = {
+  stage: "Where the price is in its trend, judged from its 20/50/200-day averages. Emerging = a new uptrend. Confirmed = an established one. Pullback = a dip inside an uptrend.",
+  score: "40% business quality + 30% growth + 30% price momentum. Each part is a rank inside the index: 70 means better than 70% of stocks.",
+  rs: "6-month return ranked against every stock in the index. 80 means it beat 80% of them. The scanner wants it to beat most.",
+  x3: "3-month return minus the index's. Positive = the stock is beating the market.",
+  hi: "How far the price is below its 52-week high. The scanner avoids stocks more than 25% below it.",
+  pe: "Price divided by yearly profit. Lower = cheaper. The scanner accepts up to 1.3x the stock's own 5-year median, or PEG under 2.",
+  action: "What the scanner suggests right now, and the price level that would trigger it.",
+  roce: "Return on capital: yearly profit for every 100 the business has tied up. Over 15% is the bar, and it is the best single sign of a real moat.",
+  roe: "Return on equity, used for banks and lenders instead of return on capital. Bar: over 14%.",
+  sales: "Sales growth in the latest quarter versus the same quarter last year. Bar: over 15%.",
+  profit: "Profit growth in the latest quarter versus the same quarter last year. Bar: over 20%, and it should be speeding up.",
+  de: "Debt compared with shareholders' money. Bar: under 0.5, so a bad year does not put the bank in charge.",
+  ocf: "Cash the business actually received for each 1 of reported profit. Bar: over 0.8. It is the main accounting-trouble filter.",
+  avg50: "Average closing price of the last 50 days. Price above it, with it above the 200-day, is the textbook uptrend.",
+  avg200: "Average closing price of the last 200 days. It should be rising: a falling one means the long trend is still down.",
+  entry: "The scanner buys on a breakout (price closes above a quiet range on heavy volume) or a pullback (a dip to the 50-day average that turns back up).",
+  gate1: "Gates 1 and 2 in the guide: is this a good business, and is it growing right now? Sector median = the middle company in the same sector.",
+  gate3: "Gate 3: is the price already going up? The scanner will not buy a great company while the market is still marking it down.",
+  gate4: "Gate 4: is the price sane? A good business can still be a bad purchase if you pay too much.",
+  next: "Things the scanner cannot check itself, such as promoter pledging, or an earnings date coming up."
+};
+const T = (k, label) => `<span class="tip" tabindex="0" data-tip="${esc(GLOSS[k])}">${label}</span>`;
 const tick = (t) => String(t).replace(/\.NS$|\.BO$/, "");
 const fmtDate = (s) => { const d = new Date(s + "T00:00:00"); return isNaN(d) ? (s || "") : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) };
 
@@ -423,7 +455,7 @@ function render() {
 }
 
 function head() {
-  return `<div class="head"><span></span><span>Stock</span><span>Trend</span><span>Score</span><span style="text-align:right">6m RS</span><span style="text-align:right">3m vs idx</span><span style="text-align:right">52w high</span><span style="text-align:right">P/E</span><span>What to do</span></div>`;
+  return `<div class="head"><span></span><span>Stock</span><span>${T("stage","Trend")}</span><span>${T("score","Score")}</span><span style="text-align:right">${T("rs","6m RS")}</span><span style="text-align:right">${T("x3","3m vs idx")}</span><span style="text-align:right">${T("hi","52w high")}</span><span style="text-align:right">${T("pe","P/E")}</span><span>${T("action","What to do")}</span></div>`;
 }
 function stageChip(r) {
   const c = { "Emerging": "new", "Confirmed uptrend": "ongoing", "Pullback in uptrend": "pull" }[r.stage] || "watch";
@@ -473,21 +505,22 @@ function openDrawer(t, silent) {
   d.innerHTML = `
     <div class="dh"><div><h2>${esc(tick(r.t))}</h2><p>${esc(r.sector)} · ${stageChip(r)} · last close <span class="num">${money(r.close)}</span></p></div><button class="x" data-close="1" aria-label="Close">×</button></div>
     <div class="card actionbox" style="--c:var(--${g.c});--cs:var(--${g.c}-soft)"><h3>${g.label}</h3><p>${r.action.html}</p>${r.trig ? `<small>Levels: ${esc(r.trig)}</small>` : ""}</div>
-    <div class="card"><h3>Price</h3>${positionHtml(r)}
-      <div class="links" style="margin-top:12px"><a class="big" target="_blank" rel="noopener" href="${tvUrl(r.t)}">Live chart on TradingView ↗</a>${r.screener ? `<a target="_blank" rel="noopener" href="${esc(r.screener)}">Screener.in ↗</a>` : ""}${r.yahoo ? `<a target="_blank" rel="noopener" href="${esc(r.yahoo)}">Yahoo Finance ↗</a>` : ""}</div></div>
-    <div class="card"><h3>Trend</h3><table class="m">
-      <tr><td>Stage</td><td class="n">${esc(r.stage)}, ${r.dStage ?? "—"} days</td></tr>
+    <div class="card"><h3>Live price chart</h3><div class="links"><a class="big" target="_blank" rel="noopener" href="${tvUrl(r.t)}">TradingView chart ↗</a>${r.screener ? `<a target="_blank" rel="noopener" href="${esc(r.screener)}">Screener.in ↗</a>` : ""}${r.yahoo ? `<a target="_blank" rel="noopener" href="${esc(r.yahoo)}">Yahoo Finance ↗</a>` : ""}</div></div>
+    <div class="card"><h3>1 · ${T("gate1","Is it a good, growing business?")}</h3><p class="qa">Compared with other ${esc(r.sector)} companies.</p>${fundHtml(r, rows)}</div>
+    <div class="card"><h3>2 · ${T("gate3","Is the price trending up?")}</h3><table class="m">
+      <tr><td>${T("stage","Stage")}</td><td class="n">${esc(r.stage)}, ${r.dStage ?? "—"} days</td></tr>
       <tr><td>In uptrend since</td><td class="n">${r.upSince ? fmtDate(r.upSince) + ` (${r.dUp} days)` : "—"}</td></tr>
-      <tr><td>50-day vs 200-day average</td><td class="n">${esc(r.cross || "—")}</td></tr>
-      <tr><td>6-month strength (percentile in index)</td><td class="n">${r.rs == null ? "—" : Math.round(r.rs * 100)}</td></tr>
-      <tr><td>3-month return vs index</td><td class="n ${sgn(r.x3)}">${pct(r.x3, true, 1)}</td></tr>
-      <tr><td>From 52-week high</td><td class="n">${pct(r.hi, true, 1)}</td></tr></table></div>
-    <div class="card"><h3>Business vs sector</h3>${fundHtml(r, rows)}</div>
-    <div class="card"><h3>Score ${r.score == null ? "" : r.score.toFixed(2)}</h3><div class="qgm">
+      <tr><td>${T("avg50","50-day")} vs ${T("avg200","200-day average")}</td><td class="n">${esc(r.cross || "—")}</td></tr>
+      <tr><td>${T("rs","6-month strength")}</td><td class="n">${r.rs == null ? "—" : Math.round(r.rs * 100)}</td></tr>
+      <tr><td>${T("x3","3-month return vs index")}</td><td class="n ${sgn(r.x3)}">${pct(r.x3, true, 1)}</td></tr>
+      <tr><td>${T("hi","From 52-week high")}</td><td class="n">${pct(r.hi, true, 1)}</td></tr></table></div>
+    <div class="card"><h3>3 · ${T("gate4","Is the price sane?")}</h3><table class="m"><tr><td>${T("pe","P/E")}</td><td class="n">${r.pe == null ? "—" : r.pe.toFixed(0)}</td></tr></table></div>
+    <div class="card"><h3>4 · ${T("entry","Is there a trigger?")}</h3>${positionHtml(r)}</div>
+    <div class="card"><h3>${T("score","Overall score")} ${r.score == null ? "" : r.score.toFixed(2)}</h3><div class="qgm">
       ${[["Quality", r.q], ["Growth", r.g], ["Momentum", r.m]].map(([l, v]) => `<span>${l}</span><span class="bar"><i style="width:${Math.round((v || 0) * 100)}%"></i></span><span class="num">${v == null ? "—" : Math.round(v * 100)}</span>`).join("")}
-      </div><p class="chartnote">Each part is a percentile within the index: 70 means better than 70% of stocks.</p></div>
+      </div></div>
     ${eventsHtml(r)}
-    ${r.nextText ? `<div class="card"><h3>What to check next</h3><p class="textblock">${esc(r.nextText)}</p></div>` : ""}`;
+    ${r.nextText ? `<div class="card"><h3>${T("next","What to check next")}</h3><p class="textblock">${esc(r.nextText)}</p></div>` : ""}`;
   document.body.append(scrim, d);
   d.querySelector(".x").focus({ preventScroll: true });
   scrim.addEventListener("click", () => closeDrawer());
@@ -506,7 +539,7 @@ function positionHtml(r) {
   const sorted = [...pts].sort((a, b) => a[1] - b[1]);
   return `<div class="track" aria-label="Price relative to its averages and 52-week high"><div class="line"></div>${sorted.map((x, i) =>
     `<div class="mk ${x[2] === "price" ? "price" : ""} ${i % 2 ? "dn" : "up"}" style="left:${((x[1] - lo) / (hi - lo) * 100).toFixed(1)}%;--c:${colors[x[2]]}"><i></i><span>${x[0]} ${money(x[1])}</span></div>`).join("")}</div>
-    <p class="chartnote">Where the price sits against its 20- and 50-day averages and 52-week high. For the full chart, open TradingView.</p>`;
+    <p class="chartnote">Where the price sits against its 20- and 50-day averages and 52-week high. </p>`;
 }
 
 function fundHtml(r, rows) {
@@ -518,12 +551,12 @@ function fundHtml(r, rows) {
     };
     const p0 = (v) => pct(v, false), ps = (v) => pct(v), x2 = (v) => v == null ? "—" : v.toFixed(2), x0 = (v) => v == null ? "—" : v.toFixed(0);
     return `<table class="m"><tr><th></th><th class="n">Stock</th><th class="n">Sector median</th><th class="n">Rank</th></tr>
-      ${line(lab + " (avg)", r.roce, r.mRoce, r.rRoce, p0, "hi")}
-      ${line("Sales growth, last qtr", r.sYoY, r.mSales, null, ps, "hi")}
-      ${line("Profit growth, last qtr", r.pYoY, r.mProfit, r.rProfit, ps, "hi")}
-      ${line("P/E", r.pe, r.mPe, null, x0, "lo")}
-      ${r.fin ? "" : line("Debt / equity", r.de, r.mDe, null, x2, "lo")}
-      ${line("Operating cash / profit", r.ocf, null, null, x2, "hi")}</table>
+      ${line(T(r.fin ? "roe" : "roce", lab + " (avg)"), r.roce, r.mRoce, r.rRoce, p0, "hi")}
+      ${line(T("sales", "Sales growth, last qtr"), r.sYoY, r.mSales, null, ps, "hi")}
+      ${line(T("profit", "Profit growth, last qtr"), r.pYoY, r.mProfit, r.rProfit, ps, "hi")}
+      ${line(T("pe", "P/E"), r.pe, r.mPe, null, x0, "lo")}
+      ${r.fin ? "" : line(T("de", "Debt / equity"), r.de, r.mDe, null, x2, "lo")}
+      ${line(T("ocf", "Operating cash / profit"), r.ocf, null, null, x2, "hi")}</table>
       <p class="chartnote">Sector median covers every ${state.market === "india" ? "Nifty 500" : "S&P 500"} stock in ${esc(r.sector)} (${r.nPeers ?? "?"} companies). Green = better than the median.</p>${missesHtml(r)}`;
   }
   if (r.peers) return `<p class="textblock">${esc(r.peers)}</p>${missesHtml(r)}`;

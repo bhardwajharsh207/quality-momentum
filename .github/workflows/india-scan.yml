@@ -57,6 +57,7 @@ jobs:
         run: |
           git config user.name "quality-momentum-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/india reports/india 2>/dev/null || true
+          python export_site.py || true
+          git add docs data/india reports/india 2>/dev/null || true
           if [ -s logs/india-latest.log ] && ! grep -q '^No new session' logs/india-latest.log; then git add -f logs/india-latest.log; fi
           git diff --cached --quiet || (git commit -m "India scan $(date -u +%F)" && git pull --rebase --autostash && git push)
