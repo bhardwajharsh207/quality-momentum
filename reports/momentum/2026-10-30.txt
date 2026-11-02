@@ -4,19 +4,19 @@ INDIA: NEW MOMENTUM
   IGIL           Emerging, uptrend 3 days     Stretched: wait for a dip
   PERSISTENT     Emerging, uptrend 34 days    Setup skipped: all position slots are full
   LTTS           Emerging, uptrend 7 days     Near breakout ₹4,297
-  HCLTECH        Emerging, uptrend 5 days     Wait: above ₹1,424 or dip to ₹1,323
-  CYIENT         Emerging, uptrend 29 days    Wait: above ₹1,230 or dip to ₹1,148
+  HCLTECH        Emerging, uptrend 5 days     Wait: above ₹1,424 or dip to ₹1,289
+  CYIENT         Emerging, uptrend 29 days    Wait: above ₹1,230 or dip to ₹1,089
 
 INDIA: ONGOING MOMENTUM
   COFORGE        Confirmed, uptrend 64 days   BUY at or below ₹2,115
-  ACUTAAS        Confirmed, uptrend 277 days  BUY at or below ₹3,983
-  SONACOMS       Confirmed, uptrend 219 days  Wait: above ₹879 or dip to ₹809
-  APLAPOLLO      Confirmed, uptrend 51 days   Buy zone (50-day avg ₹2,158)
-  CPPLUS         Confirmed, uptrend 87 days   Buy zone (50-day avg ₹3,787)
+  ACUTAAS        Confirmed, uptrend 277 days  BUY at or below ₹4,176
+  SONACOMS       Confirmed, uptrend 219 days  Wait: above ₹879 or dip to ₹807
+  APLAPOLLO      Confirmed, uptrend 51 days   Buy zone (20-day avg ₹2,128)
+  CPPLUS         Confirmed, uptrend 87 days   Buy zone (50-day avg ₹4,015)
 
 US: NEW MOMENTUM
   ACN            Emerging, uptrend 14 days    Near breakout $260
-  WDAY           Emerging, uptrend 45 days    Buy zone (20-day avg $196)
+  WDAY           Emerging, uptrend 45 days    Buy zone (20-day avg $194)
   CBOE           Emerging, uptrend 11 days    Watch only (lagging)
   ROP            Emerging, uptrend 50 days    Setup skipped: all position slots are full
   COST           Emerging, uptrend 7 days     Watch for golden cross
@@ -26,4 +26,4 @@ US: ONGOING MOMENTUM
   CVX            Confirmed, uptrend 282 days  Watch only (US: trend too old)
   XOM            Confirmed, uptrend 282 days  Watch only (US: trend too old)
   EXPD           Confirmed, uptrend 282 days  Watch only (US: trend too old)
-  VEEV           Confirmed, uptrend 52 days   Wait: above $323 or dip to $306
+  VEEV           Confirmed, uptrend 52 days   Wait: above $323 or dip to $284
