@@ -1,29 +1,29 @@
 Bullish momentum (INDIA 2026-10-30, US 2026-10-30)
 
 INDIA: NEW MOMENTUM
-  IGIL           Emerging, 3 days             Stretched: wait for a dip
-  PERSISTENT     Emerging, 15 days            Setup skipped: all position slots are full
-  LTTS           Emerging, 7 days             Near breakout ₹4,297
-  HCLTECH        Emerging, 5 days             Wait: above ₹1,424 or dip to ₹1,323
-  CYIENT         Emerging, 29 days            Wait: above ₹1,230 or dip to ₹1,148
+  IGIL           Emerging, uptrend 3 days     Stretched: wait for a dip
+  PERSISTENT     Emerging, uptrend 34 days    Setup skipped: all position slots are full
+  LTTS           Emerging, uptrend 7 days     Near breakout ₹4,297
+  HCLTECH        Emerging, uptrend 5 days     Wait: above ₹1,424 or dip to ₹1,323
+  CYIENT         Emerging, uptrend 29 days    Wait: above ₹1,230 or dip to ₹1,148
 
 INDIA: ONGOING MOMENTUM
-  COFORGE        Confirmed uptrend, 8 days    BUY at or below ₹2,115
-  ACUTAAS        Confirmed uptrend, 4 days    BUY at or below ₹3,983
-  SONACOMS       Confirmed uptrend, 2 days    Wait: above ₹879 or dip to ₹809
-  APLAPOLLO      Confirmed uptrend, 4 days    Buy zone (50-day avg ₹2,158)
-  CPPLUS         Confirmed uptrend, 21 days   Buy zone (50-day avg ₹3,787)
+  COFORGE        Confirmed, uptrend 64 days   BUY at or below ₹2,115
+  ACUTAAS        Confirmed, uptrend 277 days  BUY at or below ₹3,983
+  SONACOMS       Confirmed, uptrend 219 days  Wait: above ₹879 or dip to ₹809
+  APLAPOLLO      Confirmed, uptrend 51 days   Buy zone (50-day avg ₹2,158)
+  CPPLUS         Confirmed, uptrend 87 days   Buy zone (50-day avg ₹3,787)
 
 US: NEW MOMENTUM
-  ACN            Emerging, 14 days            Near breakout $260
-  WDAY           Emerging, 10 days            Buy zone (20-day avg $196)
-  CBOE           Emerging, 11 days            Watch only (lagging)
-  ROP            Emerging, 5 days             Setup skipped: all position slots are full
-  COST           Emerging, 7 days             Watch for golden cross
+  ACN            Emerging, uptrend 14 days    Near breakout $260
+  WDAY           Emerging, uptrend 45 days    Buy zone (20-day avg $196)
+  CBOE           Emerging, uptrend 11 days    Watch only (lagging)
+  ROP            Emerging, uptrend 50 days    Setup skipped: all position slots are full
+  COST           Emerging, uptrend 7 days     Watch for golden cross
 
 US: ONGOING MOMENTUM
-  COP            Confirmed uptrend, 20 days   Watch only (US: trend too old)
-  CVX            Confirmed uptrend, 70 days   Watch only (US: trend too old)
-  XOM            Confirmed uptrend, 59 days   Watch only (US: trend too old)
-  EXPD           Confirmed uptrend, 26 days   Watch only (US: trend too old)
-  VEEV           Confirmed uptrend, 17 days   Wait: above $323 or dip to $306
+  COP            Confirmed, uptrend 217 days  Watch only (US: trend too old)
+  CVX            Confirmed, uptrend 282 days  Watch only (US: trend too old)
+  XOM            Confirmed, uptrend 282 days  Watch only (US: trend too old)
+  EXPD           Confirmed, uptrend 282 days  Watch only (US: trend too old)
+  VEEV           Confirmed, uptrend 52 days   Wait: above $323 or dip to $306
