@@ -1,0 +1,620 @@
+<title>Momentum Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a trading-desk worklist. Status summary on top, grouped rows below, detail drawer on the right. */
+:root {
+  --bg: #f3f5f8; --surface: #ffffff; --raised: #f8f9fb; --ink: #141820; --ink2: #4c5563; --muted: #858e9c;
+  --line: #e1e5eb; --accent: #2747d6; --accent-soft: #e6ebff;
+  --buy: #0f7a55; --buy-soft: #e2f4ec; --ready: #1c63c4; --ready-soft: #e4eefb;
+  --new: #6b3fd0; --new-soft: #efe9fc; --ongoing: #3c4b60; --ongoing-soft: #e8ecf1;
+  --pull: #a15f00; --pull-soft: #fbf0df; --watch: #7a8391; --watch-soft: #eef0f3;
+  --up: #0f7a55; --down: #b4302b;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1116; --surface: #161a21; --raised: #1b2029; --ink: #e7eaef; --ink2: #a7afbb; --muted: #6f7886;
+  --line: #262c36; --accent: #8199ff; --accent-soft: #1f2747;
+  --buy: #45cf98; --buy-soft: #12291f; --ready: #6fa9ff; --ready-soft: #142238;
+  --new: #ad91ff; --new-soft: #221a3a; --ongoing: #a9b7ca; --ongoing-soft: #1e242e;
+  --pull: #f0a845; --pull-soft: #2d2213; --watch: #7c8594; --watch-soft: #1c2028;
+  --up: #45cf98; --down: #ff7b72; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1116; --surface: #161a21; --raised: #1b2029; --ink: #e7eaef; --ink2: #a7afbb; --muted: #6f7886;
+  --line: #262c36; --accent: #8199ff; --accent-soft: #1f2747;
+  --buy: #45cf98; --buy-soft: #12291f; --ready: #6fa9ff; --ready-soft: #142238;
+  --new: #ad91ff; --new-soft: #221a3a; --ongoing: #a9b7ca; --ongoing-soft: #1e242e;
+  --pull: #f0a845; --pull-soft: #2d2213; --watch: #7c8594; --watch-soft: #1c2028;
+  --up: #45cf98; --down: #ff7b72; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--body); -webkit-font-smoothing: antialiased }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 20px 96px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+.num, td.n, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums }
+button, select, input { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+a { color: var(--accent) }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 18px }
+.brand { display: flex; flex-direction: column; gap: 2px; margin-right: auto; min-width: 0 }
+.brand h1 { font: 600 26px/1.1 var(--display); letter-spacing: .01em; margin: 0; text-wrap: balance }
+.brand p { margin: 0; color: var(--ink2); font-size: 13px }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px }
+.seg button { border: 0; background: transparent; padding: 6px 16px; border-radius: 999px; font-weight: 500; color: var(--ink2) }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface) }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-weight: 500 }
+.btn:hover { border-color: var(--ink2) }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff }
+.stamp { color: var(--muted); font-size: 12px }
+
+/* Status tiles */
+.tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px }
+.tile { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; position: relative; overflow: hidden }
+.tile::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--c) }
+.tile b { font: 600 24px/1.1 var(--display) }
+.tile span { color: var(--ink2); font-size: 12.5px }
+.tile[aria-pressed="true"] { border-color: var(--c); background: var(--cs) }
+@media (max-width: 900px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
+
+/* Changes strip */
+.changes { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px }
+.changes summary { padding: 10px 14px; cursor: pointer; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.changes summary b { font-weight: 600 }
+.changes summary span { color: var(--ink2); font-size: 13px }
+.chg-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 14px }
+.chg { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; background: var(--raised) }
+.chg b { font-family: var(--mono); font-weight: 500 }
+.chg.in { border-color: var(--buy) } .chg.out { border-color: var(--down) }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px }
+.controls input, .controls select { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 14px; min-width: 0 }
+.controls input { flex: 1 1 220px }
+.controls label { color: var(--ink2); font-size: 12.5px }
+
+/* Groups and rows */
+.group { margin-top: 18px }
+.group h2 { font: 600 17px/1.2 var(--display); margin: 0 0 2px; display: flex; gap: 8px; align-items: baseline }
+.group h2 .count { font: 500 13px var(--mono); color: var(--muted) }
+.group > p { margin: 0 0 8px; color: var(--ink2); font-size: 13px }
+.rows { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden }
+.head, .row { display: grid; align-items: center; gap: 10px; padding: 9px 12px;
+  grid-template-columns: 22px minmax(120px, 1.1fr) minmax(140px, 1fr) 132px 58px 68px 66px 52px minmax(200px, 2.1fr) }
+.head { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); background: var(--raised); border-bottom: 1px solid var(--line) }
+.row { border-top: 1px solid var(--line); cursor: pointer }
+.row:first-of-type { border-top: 0 }
+.row:hover { background: var(--raised) }
+.tk { display: flex; flex-direction: column; min-width: 0 }
+.tk b { font: 600 15px var(--mono) }
+.tk span { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 500;
+  background: var(--cs); color: var(--c); white-space: nowrap }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c) }
+.trend { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0 }
+.trend small { color: var(--ink2); font-size: 12px }
+.score { display: flex; flex-direction: column; gap: 4px }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px }
+.score small { color: var(--muted); font: 11px var(--mono) }
+.n { font: 13px var(--mono); text-align: right }
+.pos { color: var(--up) } .neg { color: var(--down) }
+.act { font-size: 13px; color: var(--ink) }
+.act b { font-weight: 600 }
+.why { color: var(--muted); font-size: 12px }
+.cmp { width: 18px; height: 18px; accent-color: var(--accent) }
+.empty { padding: 16px; color: var(--ink2) }
+@media (max-width: 960px) {
+  .head { display: none }
+  .row { grid-template-columns: 22px 1fr auto; grid-template-areas: "c tk sc" ". tr tr" ". m m" ". a a"; row-gap: 6px }
+  .row > .c1 { grid-area: c } .row > .tk { grid-area: tk } .row > .score { grid-area: sc; width: 110px }
+  .row > .trend { grid-area: tr } .row > .mrow { grid-area: m; display: flex; gap: 14px; flex-wrap: wrap }
+  .row > .act { grid-area: a }
+  .row > .n { display: none }
+}
+.mrow { display: none; font: 12px var(--mono); color: var(--ink2) }
+.mrow span b { color: var(--ink); font-weight: 500 }
+
+/* Notice */
+.notice { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 8px; max-width: 70ch }
+.notice h2 { font: 600 18px var(--display); margin: 0 }
+.notice p { margin: 0; color: var(--ink2) }
+.skel { height: 44px; border-radius: 6px; background: linear-gradient(90deg, var(--line), var(--raised), var(--line)); background-size: 200% 100%; animation: sh 1.4s infinite linear; margin-top: 8px }
+@keyframes sh { to { background-position: -200% 0 } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none } }
+
+/* Drawer */
+.scrim { position: fixed; inset: 0; background: rgb(10 12 16 / .45); z-index: 20 }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 100%); background: var(--surface); z-index: 21;
+  border-left: 1px solid var(--line); overflow-y: auto; overscroll-behavior: contain;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) 20px }
+.dh { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px }
+.dh h2 { font: 600 28px/1 var(--mono); margin: 0 }
+.dh p { margin: 4px 0 0; color: var(--ink2) }
+.dh .x { margin-left: auto; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; width: 34px; height: 34px; font-size: 18px; line-height: 1 }
+.card { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-top: 12px }
+.card h3 { font: 600 13px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px }
+.actionbox { background: var(--cs); border-color: var(--c) }
+.actionbox p { margin: 0; font-weight: 500 }
+.actionbox small { display: block; margin-top: 6px; color: var(--ink2) }
+.links { display: flex; flex-wrap: wrap; gap: 8px }
+.links a { text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 500 }
+.links a.big { background: var(--ink); color: var(--surface); border-color: var(--ink) }
+.track { position: relative; height: 74px; margin: 6px 6px 0 }
+.track .line { position: absolute; left: 0; right: 0; top: 37px; height: 2px; background: var(--line) }
+.mk { position: absolute; top: 31px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center }
+.mk i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--surface); background: var(--c) }
+.mk span { position: absolute; white-space: nowrap; font: 11.5px var(--mono); color: var(--ink2) }
+.mk.up span { bottom: 16px } .mk.dn span { top: 16px }
+.mk.price i { width: 16px; height: 16px; margin-top: -2px; background: var(--ink) }
+.mk.price span { color: var(--ink); font-weight: 500 }
+.chartnote { color: var(--muted); font-size: 12.5px; margin: 8px 0 0 }
+table.m { width: 100%; border-collapse: collapse; font-size: 13px }
+table.m th { text-align: left; font-weight: 500; color: var(--ink2); padding: 6px 0; border-bottom: 1px solid var(--line) }
+table.m td { padding: 6px 0; border-bottom: 1px solid var(--line) }
+table.m td.n, table.m th.n { text-align: right; padding-left: 10px }
+table.m tr:last-child td { border-bottom: 0 }
+.qgm { display: grid; grid-template-columns: 90px 1fr 44px; gap: 6px 10px; align-items: center; font-size: 13px }
+.qgm .bar { height: 8px }
+.textblock { white-space: pre-line; color: var(--ink2); font-size: 13px; margin: 0 }
+.evts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px }
+.evts li { display: flex; gap: 10px } .evts time { font: 12px var(--mono); color: var(--muted); min-width: 84px }
+
+/* Compare */
+.cbar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 15;
+  background: var(--ink); color: var(--surface); border-radius: 999px; padding: 8px 8px 8px 16px; display: flex; gap: 10px; align-items: center; box-shadow: 0 8px 24px rgb(0 0 0 / .2) }
+.cbar button { border: 0; border-radius: 999px; padding: 6px 14px; font-weight: 600 }
+.cbar .go { background: var(--accent); color: #fff } .cbar .clr { background: transparent; color: var(--surface) }
+.cmpwrap { overflow-x: auto }
+table.cm { border-collapse: collapse; font-size: 13px; min-width: 100% }
+table.cm th, table.cm td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap }
+table.cm th:first-child, table.cm td:first-child { text-align: left; color: var(--ink2); font-weight: 500; position: sticky; left: 0; background: var(--surface) }
+table.cm thead th { font: 600 15px var(--mono) }
+table.cm td.best { color: var(--up); font-weight: 600 }
+.foot { margin-top: 28px; color: var(--muted); font-size: 12px; max-width: 80ch }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Momentum Desk</h1>
+      <p id="sub">Quality stocks in an uptrend, from your daily scan</p>
+    </div>
+    <div class="seg" role="group" aria-label="Market">
+      <button id="mk-india" aria-pressed="true">India</button>
+      <button id="mk-us" aria-pressed="false">US</button>
+    </div>
+    <button class="btn" id="refresh">Refresh</button>
+  </header>
+
+  <div id="app">
+    <div class="notice" id="boot">
+      <h2>Loading your latest scan</h2>
+      <p>This page reads the Board and Changes tabs of your Quality Momentum sheet through your Google Sheets connection, so it always shows the most recent scan.</p>
+      <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+    </div>
+  </div>
+  <p class="foot">Data: your daily Quality Momentum scan (Yahoo Finance prices and fundamentals), read live from your Google Sheet. Ratios such as ROCE and growth are from the last reported year and quarter. A stock listed here is a research lead, not a recommendation.</p>
+</div>
+
+<script>
+(() => {
+"use strict";
+const SHEET = "1hz9yxg1Qz1AlbCKGCM_cieCJjIfpENdaZQGex0gE1TA";
+const SERVER = "Google Sheets", TOOL = "get_values";
+const RANGES = { india: "'Board - India'!A1:AZ1000", us: "'Board - US'!A1:AZ1000", changes: "'Changes'!A1:M6000" };
+const GROUPS = [
+  { id: "buy", label: "Buy today", c: "buy", desc: "A buy setup fired at the last close and passed every rule. Place a limit order; skip it if the price opens above the limit." },
+  { id: "ready", label: "Ready", c: "ready", desc: "Close to an entry: a setup just fired, is still under its limit, or the price sits in a buy zone or just below a breakout level." },
+  { id: "new", label: "New momentum", c: "new", desc: "An uptrend that is just starting: the 50-day average has crossed, or is about to cross, above the 200-day average." },
+  { id: "ongoing", label: "Ongoing momentum", c: "ongoing", desc: "An established uptrend. Wait for a breakout or a dip to the 20- or 50-day average." },
+  { id: "pull", label: "Pulling back", c: "pull", desc: "Still in an uptrend, but the price has dipped below its 50-day average. The trigger is a close back above it." },
+  { id: "watch", label: "Not buyable now", c: "watch", desc: "In momentum, but a rule blocks a buy today: valuation, US trend age or relative strength, or missing fundamentals." },
+];
+const RULE_WORDS = { "2.1": "size", "2.2": "return on capital", "2.2b": "return on assets", "2.3": "steady return on capital",
+  "2.3/2.10": "steady return on capital", "2.4": "3-yr sales growth", "2.5": "3-yr profit growth", "2.6": "debt",
+  "2.7": "cash conversion", "3.1": "quarterly sales growth", "3.2": "quarterly profit growth", "3.3": "profit growth slowing",
+  "3.4": "quarterly EBITDA growth" };
+
+const state = { market: "india", data: { india: null, us: null, changes: null }, err: {}, stamp: {}, filter: null,
+  q: "", sector: "", sort: "score", picked: new Set(), open: null };
+try { const m = localStorage.getItem("md-market"); if (m === "us" || m === "india") state.market = m } catch (e) {}
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const num = (v) => {
+  if (v === null || v === undefined || v === "") return null;
+  if (typeof v === "number") return isFinite(v) ? v : null;
+  let s = String(v).replace(/[₹$,\s]/g, "").replace("−", "-");
+  const pct = s.endsWith("%"); if (pct) s = s.slice(0, -1);
+  const n = parseFloat(s); if (!isFinite(n)) return null;
+  return pct ? n / 100 : n;
+};
+const cur = () => state.market === "india" ? "₹" : "$";
+const money = (v) => v == null ? "—" : cur() + v.toLocaleString("en-IN", { maximumFractionDigits: v < 100 ? 2 : 0 });
+const pct = (v, signed = true, d = 0) => v == null ? "—" : (signed && v > 0 ? "+" : "") + (v * 100).toFixed(d) + "%";
+const sgn = (v) => v == null ? "" : v >= 0 ? "pos" : "neg";
+const tick = (t) => String(t).replace(/\.NS$|\.BO$/, "");
+const fmtDate = (s) => { const d = new Date(s + "T00:00:00"); return isNaN(d) ? (s || "") : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) };
+
+function toObjects(values) {
+  if (!Array.isArray(values) || values.length < 2) return [];
+  const h = values[0].map((x) => String(x).trim());
+  return values.slice(1).filter((r) => r && r[0]).map((r) => { const o = {}; h.forEach((k, i) => o[k] = r[i] ?? ""); return o });
+}
+
+function shape(o) {
+  const r = {
+    t: o["Ticker"], sector: o["Sector"], stage: o["Trend stage"], since: o["In stage since"], dStage: num(o["Days in stage"]),
+    upSince: o["In uptrend since"], dUp: num(o["Days in uptrend"]), entry: o["Entry status"] || "", trig: o["Trigger to watch"] || "",
+    status: o["Status today"] || "", score: num(o["Score"]), q: num(o["Quality score"]), g: num(o["Growth score"]), m: num(o["Momentum score"]),
+    cross: o["50/200 cross"] || "", rs: num(o["6m return pctile"]), x3: num(o["3m vs index"]), e20: num(o["% from 20DMA"]),
+    e50: num(o["% from 50DMA"]), hi: num(o["% from 52w high"]), close: num(o["Last close"]), pe: num(o["P/E"]), peg: num(o["PEG"]),
+    passed: o["Fund. rules passed"] || "", missed: o["Rules missed"] || "", nextRes: o["Next results"] || "",
+    whyText: o["Why it's great"] || "", peers: o["vs competitors (sector peers in index)"] || "", nextText: o["Next: what to check"] || "",
+    screener: o["Screener.in"] || "", yahoo: o["Yahoo Finance"] || "", session: o["Session"] || "",
+    roce: num(o["ROCE/ROE"]), ocf: num(o["OCF/Profit"]), de: num(o["Debt/Equity"]), sYoY: num(o["Qtr sales YoY"]),
+    pYoY: num(o["Qtr profit YoY"]), nPeers: num(o["Sector peers"]), mRoce: num(o["Sector median ROCE/ROE"]),
+    mSales: num(o["Sector median sales YoY"]), mProfit: num(o["Sector median profit YoY"]), mPe: num(o["Sector median P/E"]),
+    mDe: num(o["Sector median Debt/Equity"]), rRoce: num(o["Rank in sector (ROCE/ROE)"]), rProfit: num(o["Rank in sector (profit growth)"]),
+    fin: o["Is financial"] === "yes",
+  };
+  const lv = (re) => { const m = r.trig.match(re); return m ? num(m[1]) : null };
+  r.piv = lv(/Breakout > \D?([\d,.]+)/); r.p20 = lv(/pullback to \D?([\d,.]+) \(20DMA\)/); r.p50 = lv(/\/ \D?([\d,.]+) \(50DMA\)/);
+  [r.group, r.reason] = classify(r);
+  r.action = action(r);
+  return r;
+}
+
+function classify(r) {
+  const es = r.entry, st = r.status;
+  if (es.startsWith("BUY today")) return ["buy", ""];
+  if (/^waiting: trend - 4\.3/.test(st)) return ["watch", r.cross.startsWith("50DMA") ? "US rule: needs the golden cross first" : "US rule: trend is older than 65 trading days"];
+  if (/^waiting: trend - 4\./.test(st)) return ["watch", "US rule: lagging the market"];
+  if (st.startsWith("waiting: valuation")) return ["watch", "Valuation above its normal range"];
+  if (st.startsWith("no fundamentals")) return ["watch", "No fundamentals on file yet"];
+  if (/skipped|still under its limit/.test(es) || es.startsWith("Near breakout") || es.includes("pullback zone")) return ["ready", ""];
+  if (r.stage === "Pullback in uptrend") return ["pull", ""];
+  if (r.stage === "Emerging") return ["new", ""];
+  return ["ongoing", ""];
+}
+
+function plainReason(s) {
+  if (/no free slot/.test(s)) return "all position slots are full";
+  let m = s.match(/already holding (.+)/); if (m) return "you already hold enough " + m[1] + " stocks";
+  m = s.match(/results due (\S+)/); if (m) return "results are due " + fmtDate(m[1]);
+  if (/below 1 share/.test(s)) return "one share costs more than a position slot";
+  if (/round-trip cost/.test(s)) return "trading costs are too high for the position size";
+  if (/cooldown/.test(s)) return "it was stopped out recently";
+  return s;
+}
+
+function action(r) {
+  const es = r.entry;
+  let m;
+  if (es.startsWith("BUY today")) { m = es.match(/limit ([\d,.]+)/); return { html: `<b>Buy</b> at or below <b>${money(num(m && m[1]))}</b>. Skip if it opens above.`, short: `Buy ≤ ${money(num(m && m[1]))}` } }
+  if (es.includes("skipped:")) { const why = plainReason(es.split("skipped:")[1].trim()); return { html: `Setup fired but not taken: ${esc(why)}.`, short: "Setup skipped: " + why } }
+  if ((m = es.match(/Setup (\d+) sessions? ago .*still under its limit ([\d,.]+)/))) return { html: `Setup from ${m[1]} day(s) ago is still valid: buy at or below <b>${money(num(m[2]))}</b>.`, short: `Still buyable ≤ ${money(num(m[2]))}` };
+  if (es.includes("expired")) return { html: "Recent setup missed; the price moved away. Wait for the next pullback.", short: "Missed: wait for pullback" };
+  if (r.group === "watch") return { html: esc(r.reason) + ". Watch only.", short: r.reason };
+  if (es.startsWith("Near breakout")) return { html: `Near a breakout: buy on a close above <b>${money(r.piv)}</b> on strong volume.`, short: `Breakout above ${money(r.piv)}` };
+  if (es.includes("20DMA pullback zone")) return { html: `In the buy zone near the 20-day average (${money(r.p20)}): buy on a close above the previous day's high.`, short: `Buy zone ~${money(r.p20)}` };
+  if (es.includes("50DMA pullback zone")) return { html: `In the buy zone near the 50-day average (${money(r.p50)}): buy on a close above the previous day's high.`, short: `Buy zone ~${money(r.p50)}` };
+  if (es.startsWith("Extended")) return { html: `Stretched ${pct(r.e20, false)} above its 20-day average. Don't chase; wait for a dip toward ${money(r.p20)}.`, short: "Stretched: wait for a dip" };
+  if (es.startsWith("Below 50DMA")) return { html: `Below its 50-day average: wait for a close back above <b>${money(r.p50)}</b>.`, short: `Wait for close > ${money(r.p50)}` };
+  return { html: `Wait for a close above <b>${money(r.piv)}</b> (breakout) or a bounce from about ${money(r.p20)} (20-day average).`, short: `Above ${money(r.piv)} or dip to ${money(r.p20)}` };
+}
+
+function tvUrl(t) {
+  return state.market === "india" ? "https://www.tradingview.com/chart/?symbol=NSE%3A" + encodeURIComponent(tick(t))
+    : "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(String(t).replace("-", "."));
+}
+
+/* ---------------- data ---------------- */
+let mcp = null; const watched = new Set();
+function handleErr(key, e) {
+  state.err[key] = e || { code: "upstream_error" };
+  if (["needs_reauth", "server_not_connected", "not_in_manifest", "blocked_by_policy", "approval_required", "selection_required"].includes(e && e.code)) state.data[key] = null;
+  render();
+}
+function watch(key) {
+  try {
+    const u = mcp.watchTool(SERVER, TOOL, { spreadsheetId: SHEET, range: RANGES[key] }, (ev) => {
+      if (ev.type === "data") {
+        const p = ev.result && ev.result.payload;
+        const values = p && Array.isArray(p.values) ? p.values : [];
+        state.data[key] = toObjects(values);
+        state.err[key] = null;
+        state.stamp[key] = ev.result.cache ? ev.result.cache.storedAt : Date.now();
+        render();
+      } else handleErr(key, ev.error);
+    }, { cache: { staleTime: 5 * 60 * 1000, gcTime: 24 * 60 * 60 * 1000 } });
+    watched.add(key);
+  } catch (e) { handleErr(key, e) }
+}
+async function boot() {
+  const p = window.claude && typeof window.claude.use === "function" ? window.claude.use("mcp") : null;
+  mcp = p ? await p.catch(() => null) : null;
+  if (!mcp) {
+    $("#app").innerHTML = `<div class="notice"><h2>Open this page in Claude</h2><p>The desk reads your scan from Google Sheets through your own Google Sheets connection, which only works when the page is open in claude.ai or the Claude app while you're signed in.</p></div>`;
+    return;
+  }
+  watch(state.market); watch("changes");
+}
+async function allowOnce(key) {
+  try {
+    const res = await mcp.callTool(SERVER, TOOL, { spreadsheetId: SHEET, range: RANGES[key] }, { cache: { staleTime: 0, gcTime: 86400000 } });
+    state.data[key] = toObjects((res.payload && res.payload.values) || []); state.err[key] = null; state.stamp[key] = Date.now(); render();
+  } catch (e) { handleErr(key, e) }
+}
+
+/* ---------------- render ---------------- */
+function errorNotice(e, key) {
+  const c = e && e.code;
+  const map = {
+    server_not_connected: ["Connect Google Sheets", "Add Google Sheets in claude.ai Settings → Connectors, then reload this page."],
+    needs_reauth: ["Reconnect Google Sheets", "Your Google Sheets connection has expired. Reconnect it in claude.ai Settings → Connectors, then reload."],
+    not_in_manifest: ["Google Sheets is turned off for this page", "Allow Google Sheets for this page from its Permissions menu, then reload."],
+    approval_required: ["Allow Google Sheets", "This page needs your approval to read the scan sheet.", true],
+    selection_required: ["Choose a Google Sheets account", "You have more than one Google Sheets connection. Pick one in the prompt claude.ai shows, then reload."],
+    blocked_by_policy: ["Blocked by your organization", "Your organization's policy blocks Google Sheets for this page."],
+    tool_error: ["Couldn't read the sheet", (e && e.message ? String(e.message).slice(0, 240) : "") + " Check that this Google account can open the Quality Momentum sheet."],
+    server_unavailable: ["Google Sheets didn't answer", "This is usually brief.", true],
+  };
+  const [h, p, retry] = map[c] || ["Couldn't load the scan", (e && e.message) || "Something went wrong reading the sheet.", true];
+  return `<div class="notice"><h2>${esc(h)}</h2><p>${esc(p)}</p>${retry ? `<p><button class="btn primary" data-allow="${key}">${c === "approval_required" ? "Allow and load" : "Try again"}</button></p>` : ""}</div>`;
+}
+
+function rowsForMarket() {
+  const raw = state.data[state.market];
+  return raw ? raw.map(shape).filter((r) => r.t) : null;
+}
+
+function render() {
+  const app = $("#app");
+  ["india", "us"].forEach((m) => $("#mk-" + m).setAttribute("aria-pressed", String(state.market === m)));
+  const rows = rowsForMarket();
+  const err = state.err[state.market];
+  if (!rows) {
+    app.innerHTML = err ? errorNotice(err, state.market) : $("#boot") ? app.innerHTML : `<div class="notice"><h2>Loading ${state.market === "india" ? "India" : "US"}…</h2><div class="skel"></div><div class="skel"></div></div>`;
+    bindApp(); return;
+  }
+  const session = rows.find((r) => r.session)?.session || "";
+  $("#sub").textContent = `${state.market === "india" ? "Nifty 500" : "S&P 500"} · scan of ${fmtDate(session)} close · ${rows.length} stocks in an uptrend or pullback` +
+    (state.stamp[state.market] ? ` · read ${new Date(state.stamp[state.market]).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "");
+
+  const counts = Object.fromEntries(GROUPS.map((g) => [g.id, rows.filter((r) => r.group === g.id).length]));
+  const sectors = [...new Set(rows.map((r) => r.sector).filter(Boolean))].sort();
+  const q = state.q.trim().toUpperCase();
+  let list = rows.filter((r) => (!state.filter || r.group === state.filter) && (!state.sector || r.sector === state.sector) &&
+    (!q || r.t.toUpperCase().includes(q) || (r.sector || "").toUpperCase().includes(q)));
+  const key = { score: (r) => -(r.score ?? -1), new: (r) => r.dUp ?? 9999, rs: (r) => -(r.rs ?? -1), x3: (r) => -(r.x3 ?? -9), hi: (r) => -(r.hi ?? -9), roce: (r) => -(r.roce ?? -9) }[state.sort];
+  list.sort((a, b) => key(a) - key(b));
+
+  const tiles = GROUPS.map((g) => `<button class="tile" style="--c:var(--${g.c});--cs:var(--${g.c}-soft)" data-filter="${g.id}" aria-pressed="${state.filter === g.id}"><b class="num">${counts[g.id]}</b><span>${g.label}</span></button>`).join("");
+
+  const groupsHtml = GROUPS.filter((g) => !state.filter || g.id === state.filter).map((g) => {
+    const gl = list.filter((r) => r.group === g.id);
+    if (!gl.length && (state.filter || q || state.sector)) return "";
+    return `<section class="group"><h2 style="color:var(--${g.c})">${g.label} <span class="count">${gl.length}</span></h2><p>${g.desc}</p>
+      <div class="rows">${gl.length ? head() + gl.map(rowHtml).join("") : `<div class="empty">Nothing here today.</div>`}</div></section>`;
+  }).join("");
+
+  const searchMiss = q && !list.length ? `<div class="notice" style="margin-top:14px"><h2>${esc(q)} isn't in an uptrend right now</h2><p>Only stocks in an uptrend or pullback are on the desk. You can still open its chart.</p><div class="links"><a class="big" target="_blank" rel="noopener" href="${tvUrl(q)}">Open ${esc(q)} on TradingView ↗</a></div></div>` : "";
+
+  app.innerHTML = `<div class="tiles">${tiles}</div>${changesHtml(rows)}
+    <div class="controls">
+      <input id="q" type="search" placeholder="Search a ticker or sector (any stock opens a chart)" value="${esc(state.q)}" aria-label="Search">
+      <select id="sector" aria-label="Sector"><option value="">All sectors</option>${sectors.map((s) => `<option ${s === state.sector ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>
+      <select id="sort" aria-label="Sort">${[["score", "Sort: best score"], ["new", "Sort: newest uptrend"], ["rs", "Sort: 6-month strength"], ["x3", "Sort: 3-month vs index"], ["hi", "Sort: nearest 52-week high"], ["roce", "Sort: return on capital"]]
+        .map(([v, l]) => `<option value="${v}" ${v === state.sort ? "selected" : ""}>${l}</option>`).join("")}</select>
+      ${state.filter ? `<button class="btn" data-filter="">Show all groups</button>` : ""}
+    </div>${searchMiss}${groupsHtml}`;
+  renderCompareBar();
+  bindApp();
+  if (state.open) openDrawer(state.open, true);
+}
+
+function head() {
+  return `<div class="head"><span></span><span>Stock</span><span>Trend</span><span>Score</span><span style="text-align:right">6m RS</span><span style="text-align:right">3m vs idx</span><span style="text-align:right">52w high</span><span style="text-align:right">P/E</span><span>What to do</span></div>`;
+}
+function stageChip(r) {
+  const c = { "Emerging": "new", "Confirmed uptrend": "ongoing", "Pullback in uptrend": "pull" }[r.stage] || "watch";
+  return `<span class="chip" style="--c:var(--${c});--cs:var(--${c}-soft)">${esc(r.stage === "Confirmed uptrend" ? "Confirmed" : r.stage === "Pullback in uptrend" ? "Pullback" : r.stage)}</span>`;
+}
+function rowHtml(r) {
+  const up = r.dUp != null ? `uptrend ${r.dUp}d${r.upSince ? " · since " + fmtDate(r.upSince).replace(/ \d{4}$/, "") : ""}` : "";
+  return `<div class="row" role="button" tabindex="0" data-open="${esc(r.t)}">
+    <span class="c1" data-stop><input class="cmp" type="checkbox" aria-label="Compare ${esc(tick(r.t))}" data-pick="${esc(r.t)}" ${state.picked.has(r.t) ? "checked" : ""}></span>
+    <span class="tk"><b>${esc(tick(r.t))}</b><span>${esc(r.sector)}</span></span>
+    <span class="trend">${stageChip(r)}<small>${esc(up)}</small></span>
+    <span class="score"><span class="bar"><i style="width:${Math.round((r.score || 0) * 100)}%"></i></span><small>${r.score == null ? "—" : r.score.toFixed(2)} · Q${fmt2(r.q)} G${fmt2(r.g)} M${fmt2(r.m)}</small></span>
+    <span class="n">${r.rs == null ? "—" : Math.round(r.rs * 100)}</span>
+    <span class="n ${sgn(r.x3)}">${pct(r.x3)}</span>
+    <span class="n">${r.hi == null ? "—" : r.hi > -0.01 ? "at high" : pct(r.hi)}</span>
+    <span class="n">${r.pe == null ? "—" : r.pe.toFixed(0)}</span>
+    <span class="mrow"><span>RS <b>${r.rs == null ? "—" : Math.round(r.rs * 100)}</b></span><span>3m vs idx <b class="${sgn(r.x3)}">${pct(r.x3)}</b></span><span>P/E <b>${r.pe == null ? "—" : r.pe.toFixed(0)}</b></span></span>
+    <span class="act">${r.action.html}</span>
+  </div>`;
+}
+const fmt2 = (v) => v == null ? "–" : Math.round(v * 100);
+
+function changesHtml(rows) {
+  const all = state.data.changes;
+  if (!all) return state.err.changes ? "" : `<div class="changes"><summary><b>What changed</b><span>loading…</span></summary></div>`;
+  const M = state.market.toUpperCase();
+  const mine = all.filter((c) => c["Market"] === M && c["Session"]);
+  if (!mine.length) return "";
+  const last = mine.map((c) => c["Session"]).sort().slice(-1)[0];
+  const evs = mine.filter((c) => c["Session"] === last && c["Event"]);
+  const cls = (e) => /^Entered|BUY/.test(e) ? "in" : /^Left|EXIT/.test(e) ? "out" : "";
+  const nIn = evs.filter((c) => /^Entered/.test(c["Event"])).length, nOut = evs.filter((c) => /^Left/.test(c["Event"])).length;
+  return `<details class="changes"><summary><b>What changed on ${fmtDate(last)}</b><span>${evs.length} events · ${nIn} entered an uptrend · ${nOut} left · tap to see</span></summary>
+    <div class="chg-list">${evs.map((c) => `<button class="chg ${cls(c["Event"])}" data-open="${esc(c["Ticker"])}"><b>${esc(tick(c["Ticker"]))}</b> ${esc(c["Event"].replace(/\(on .*\)/, ""))}</button>`).join("")}</div></details>`;
+}
+
+/* ---------------- drawer ---------------- */
+function openDrawer(t, silent) {
+  const rows = rowsForMarket() || [];
+  const r = rows.find((x) => x.t === t);
+  closeDrawer(true);
+  if (!r) { if (!silent) window.open(tvUrl(t), "_blank", "noopener"); return }
+  state.open = t;
+  const g = GROUPS.find((x) => x.id === r.group);
+  const scrim = document.createElement("div"); scrim.className = "scrim"; scrim.dataset.close = "1";
+  const d = document.createElement("aside"); d.className = "drawer"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", tick(r.t));
+  d.innerHTML = `
+    <div class="dh"><div><h2>${esc(tick(r.t))}</h2><p>${esc(r.sector)} · ${stageChip(r)} · last close <span class="num">${money(r.close)}</span></p></div><button class="x" data-close="1" aria-label="Close">×</button></div>
+    <div class="card actionbox" style="--c:var(--${g.c});--cs:var(--${g.c}-soft)"><h3>${g.label}</h3><p>${r.action.html}</p>${r.trig ? `<small>Levels: ${esc(r.trig)}</small>` : ""}</div>
+    <div class="card"><h3>Price</h3>${positionHtml(r)}
+      <div class="links" style="margin-top:12px"><a class="big" target="_blank" rel="noopener" href="${tvUrl(r.t)}">Live chart on TradingView ↗</a>${r.screener ? `<a target="_blank" rel="noopener" href="${esc(r.screener)}">Screener.in ↗</a>` : ""}${r.yahoo ? `<a target="_blank" rel="noopener" href="${esc(r.yahoo)}">Yahoo Finance ↗</a>` : ""}</div></div>
+    <div class="card"><h3>Trend</h3><table class="m">
+      <tr><td>Stage</td><td class="n">${esc(r.stage)}, ${r.dStage ?? "—"} days</td></tr>
+      <tr><td>In uptrend since</td><td class="n">${r.upSince ? fmtDate(r.upSince) + ` (${r.dUp} days)` : "—"}</td></tr>
+      <tr><td>50-day vs 200-day average</td><td class="n">${esc(r.cross || "—")}</td></tr>
+      <tr><td>6-month strength (percentile in index)</td><td class="n">${r.rs == null ? "—" : Math.round(r.rs * 100)}</td></tr>
+      <tr><td>3-month return vs index</td><td class="n ${sgn(r.x3)}">${pct(r.x3, true, 1)}</td></tr>
+      <tr><td>From 52-week high</td><td class="n">${pct(r.hi, true, 1)}</td></tr></table></div>
+    <div class="card"><h3>Business vs sector</h3>${fundHtml(r, rows)}</div>
+    <div class="card"><h3>Score ${r.score == null ? "" : r.score.toFixed(2)}</h3><div class="qgm">
+      ${[["Quality", r.q], ["Growth", r.g], ["Momentum", r.m]].map(([l, v]) => `<span>${l}</span><span class="bar"><i style="width:${Math.round((v || 0) * 100)}%"></i></span><span class="num">${v == null ? "—" : Math.round(v * 100)}</span>`).join("")}
+      </div><p class="chartnote">Each part is a percentile within the index: 70 means better than 70% of stocks.</p></div>
+    ${eventsHtml(r)}
+    ${r.nextText ? `<div class="card"><h3>What to check next</h3><p class="textblock">${esc(r.nextText)}</p></div>` : ""}`;
+  document.body.append(scrim, d);
+  d.querySelector(".x").focus({ preventScroll: true });
+  scrim.addEventListener("click", () => closeDrawer());
+  d.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeDrawer() });
+}
+function closeDrawer(keep) { document.querySelectorAll(".scrim,.drawer").forEach((n) => n.remove()); if (!keep) state.open = null }
+
+function positionHtml(r) {
+  const p = r.close; if (p == null) return `<p class="chartnote">No price on file.</p>`;
+  const pts = [["Price", p, "price"]];
+  if (r.e20 != null) pts.push(["20-day avg", p / (1 + r.e20), "a"]);
+  if (r.e50 != null) pts.push(["50-day avg", p / (1 + r.e50), "b"]);
+  if (r.hi != null) pts.push(["52w high", p / (1 + r.hi), "h"]);
+  const vals = pts.map((x) => x[1]); let lo = Math.min(...vals), hi = Math.max(...vals); const pad = (hi - lo) * 0.12 || p * 0.02; lo -= pad; hi += pad;
+  const colors = { price: "var(--ink)", a: "var(--pull)", b: "var(--ready)", h: "var(--muted)" };
+  const sorted = [...pts].sort((a, b) => a[1] - b[1]);
+  return `<div class="track" aria-label="Price relative to its averages and 52-week high"><div class="line"></div>${sorted.map((x, i) =>
+    `<div class="mk ${x[2] === "price" ? "price" : ""} ${i % 2 ? "dn" : "up"}" style="left:${((x[1] - lo) / (hi - lo) * 100).toFixed(1)}%;--c:${colors[x[2]]}"><i></i><span>${x[0]} ${money(x[1])}</span></div>`).join("")}</div>
+    <p class="chartnote">Where the price sits against its 20- and 50-day averages and 52-week high. For the full chart, open TradingView.</p>`;
+}
+
+function fundHtml(r, rows) {
+  const lab = r.fin ? "ROE" : "ROCE";
+  if (r.roce != null || r.sYoY != null) {
+    const line = (name, v, med, rank, f, better) => {
+      const cmp = v != null && med != null ? ((better === "hi" ? v >= med : v <= med) ? "pos" : "neg") : "";
+      return `<tr><td>${name}</td><td class="n ${cmp}">${f(v)}</td><td class="n">${f(med)}</td><td class="n">${rank ? "#" + rank + " of " + (r.nPeers ?? "?") : ""}</td></tr>`;
+    };
+    const p0 = (v) => pct(v, false), ps = (v) => pct(v), x2 = (v) => v == null ? "—" : v.toFixed(2), x0 = (v) => v == null ? "—" : v.toFixed(0);
+    return `<table class="m"><tr><th></th><th class="n">Stock</th><th class="n">Sector median</th><th class="n">Rank</th></tr>
+      ${line(lab + " (avg)", r.roce, r.mRoce, r.rRoce, p0, "hi")}
+      ${line("Sales growth, last qtr", r.sYoY, r.mSales, null, ps, "hi")}
+      ${line("Profit growth, last qtr", r.pYoY, r.mProfit, r.rProfit, ps, "hi")}
+      ${line("P/E", r.pe, r.mPe, null, x0, "lo")}
+      ${r.fin ? "" : line("Debt / equity", r.de, r.mDe, null, x2, "lo")}
+      ${line("Operating cash / profit", r.ocf, null, null, x2, "hi")}</table>
+      <p class="chartnote">Sector median covers every ${state.market === "india" ? "Nifty 500" : "S&P 500"} stock in ${esc(r.sector)} (${r.nPeers ?? "?"} companies). Green = better than the median.</p>${missesHtml(r)}`;
+  }
+  if (r.peers) return `<p class="textblock">${esc(r.peers)}</p>${missesHtml(r)}`;
+  const peers = rows.filter((x) => x.sector === r.sector);
+  const med = (a) => { const v = a.filter((x) => x != null).sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : null };
+  return `<table class="m"><tr><th></th><th class="n">Stock</th><th class="n">Median of ${peers.length} on the desk</th></tr>
+    <tr><td>P/E</td><td class="n">${r.pe == null ? "—" : r.pe.toFixed(0)}</td><td class="n">${med(peers.map((x) => x.pe))?.toFixed(0) ?? "—"}</td></tr>
+    <tr><td>Score</td><td class="n">${r.score?.toFixed(2) ?? "—"}</td><td class="n">${med(peers.map((x) => x.score))?.toFixed(2) ?? "—"}</td></tr></table>
+    <p class="chartnote">Full financial comparison (return on capital, growth, debt vs sector) appears after the next scan.</p>${missesHtml(r)}`;
+}
+function missesHtml(r) {
+  const ms = [...new Set(r.missed.split(",").map((m) => RULE_WORDS[m.trim()]).filter(Boolean))];
+  return `<p class="chartnote">${r.passed ? `Passes ${esc(r.passed)} quality rules.` : ""}${ms.length ? " Weak on: " + esc(ms.join(", ")) + "." : ""}${r.nextRes ? " Next results " + fmtDate(r.nextRes) + "." : ""}</p>`;
+}
+function eventsHtml(r) {
+  const all = state.data.changes; if (!all) return "";
+  const evs = all.filter((c) => c["Ticker"] === r.t && c["Market"] === state.market.toUpperCase()).slice(-8).reverse();
+  if (!evs.length) return "";
+  return `<div class="card"><h3>History</h3><ul class="evts">${evs.map((c) => `<li><time>${esc(c["Session"])}</time><span>${esc(c["Event"])}</span></li>`).join("")}</ul></div>`;
+}
+
+/* ---------------- compare ---------------- */
+function renderCompareBar() {
+  document.querySelector(".cbar")?.remove();
+  if (!state.picked.size) return;
+  const b = document.createElement("div"); b.className = "cbar";
+  b.innerHTML = `<span>${state.picked.size} selected</span><button class="go" ${state.picked.size < 2 ? "disabled" : ""}>Compare</button><button class="clr">Clear</button>`;
+  b.querySelector(".go").onclick = openCompare; b.querySelector(".clr").onclick = () => { state.picked.clear(); render() };
+  document.body.append(b);
+}
+function openCompare() {
+  const rows = (rowsForMarket() || []).filter((r) => state.picked.has(r.t));
+  if (rows.length < 2) return;
+  closeDrawer();
+  const metrics = [
+    ["Status", (r) => GROUPS.find((g) => g.id === r.group).label, null],
+    ["Stage", (r) => r.stage, null], ["Days in uptrend", (r) => r.dUp, "lo"],
+    ["Score", (r) => r.score, "hi", (v) => v?.toFixed(2)], ["Quality", (r) => r.q, "hi", (v) => fmt2(v)], ["Growth", (r) => r.g, "hi", (v) => fmt2(v)], ["Momentum", (r) => r.m, "hi", (v) => fmt2(v)],
+    ["6m strength pctile", (r) => r.rs, "hi", (v) => fmt2(v)], ["3m vs index", (r) => r.x3, "hi", (v) => pct(v)], ["From 52w high", (r) => r.hi, "hi", (v) => pct(v)],
+    ["ROCE / ROE", (r) => r.roce, "hi", (v) => pct(v, false)], ["Sales growth (qtr)", (r) => r.sYoY, "hi", (v) => pct(v)], ["Profit growth (qtr)", (r) => r.pYoY, "hi", (v) => pct(v)],
+    ["P/E", (r) => r.pe, "lo", (v) => v?.toFixed(0)], ["PEG", (r) => r.peg, "lo", (v) => v?.toFixed(2)], ["Debt / equity", (r) => r.de, "lo", (v) => v?.toFixed(2)],
+    ["What to do", (r) => r.action.short, null],
+  ];
+  const body = metrics.map(([name, get, better, f]) => {
+    const vals = rows.map(get);
+    const nums = vals.filter((v) => typeof v === "number");
+    const best = better && nums.length > 1 ? (better === "hi" ? Math.max(...nums) : Math.min(...nums)) : null;
+    return `<tr><td>${name}</td>${vals.map((v) => `<td class="${typeof v === "number" ? "num" : ""} ${best != null && v === best ? "best" : ""}">${esc(f ? (f(v) ?? "—") : (v ?? "—"))}</td>`).join("")}</tr>`;
+  }).join("");
+  const scrim = document.createElement("div"); scrim.className = "scrim";
+  const d = document.createElement("aside"); d.className = "drawer"; d.style.width = "min(860px, 100%)"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", "Compare");
+  d.innerHTML = `<div class="dh"><div><h2 style="font-family:var(--display)">Compare</h2><p>Green marks the best value in each row.</p></div><button class="x" aria-label="Close">×</button></div>
+    <div class="cmpwrap"><table class="cm"><thead><tr><th></th>${rows.map((r) => `<th>${esc(tick(r.t))}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>
+    <div class="links" style="margin-top:14px">${rows.map((r) => `<a target="_blank" rel="noopener" href="${tvUrl(r.t)}">${esc(tick(r.t))} chart ↗</a>`).join("")}</div>`;
+  document.body.append(scrim, d);
+  const close = () => { scrim.remove(); d.remove() };
+  scrim.onclick = close; d.querySelector(".x").onclick = close;
+}
+
+/* ---------------- events ---------------- */
+function bindApp() {
+  const app = $("#app");
+  app.querySelectorAll("[data-allow]").forEach((b) => b.onclick = () => { const k = b.dataset.allow; state.err[k] = null; allowOnce(k) });
+  app.querySelectorAll("[data-filter]").forEach((b) => b.onclick = () => { const f = b.dataset.filter; state.filter = state.filter === f || !f ? null : f; render() });
+  const qi = $("#q"); if (qi) qi.oninput = () => { state.q = qi.value; const pos = qi.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(pos, pos) };
+  const se = $("#sector"); if (se) se.onchange = () => { state.sector = se.value; render() };
+  const so = $("#sort"); if (so) so.onchange = () => { state.sort = so.value; render() };
+}
+document.addEventListener("click", (e) => {
+  const pick = e.target.closest("[data-pick]");
+  if (pick) { const t = pick.dataset.pick; pick.checked ? state.picked.add(t) : state.picked.delete(t); if (state.picked.size > 4) { state.picked.delete(t); pick.checked = false } renderCompareBar(); return }
+  if (e.target.closest("[data-stop]")) return;
+  const o = e.target.closest("[data-open]"); if (o && $("#app").contains(o)) { openDrawer(o.dataset.open); return }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { closeDrawer(); document.querySelectorAll(".scrim,.drawer").forEach((n) => n.remove()) }
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches(".row[data-open]")) { e.preventDefault(); openDrawer(e.target.dataset.open) }
+});
+["india", "us"].forEach((m) => $("#mk-" + m).onclick = () => {
+  if (state.market === m) return;
+  state.market = m; state.filter = null; state.sector = ""; state.picked.clear(); closeDrawer();
+  try { localStorage.setItem("md-market", m) } catch (e) {}
+  if (mcp && !watched.has(m)) watch(m);
+  render();
+});
+$("#refresh").onclick = async () => {
+  if (!mcp) return;
+  const b = $("#refresh"); b.textContent = "Refreshing…"; b.disabled = true;
+  try { await mcp.invalidate(SERVER, TOOL) } catch (e) {}
+  setTimeout(() => { b.textContent = "Refresh"; b.disabled = false }, 1500);
+};
+boot();
+})();
+</script>
