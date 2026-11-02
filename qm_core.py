@@ -919,22 +919,27 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
               "base_len": base["length"] if base else None, "excess63": w["excess63"]}
         status[t] = st
         if not w.get("passed"):
-            st["stage"] = "no fundamentals on file yet (retried each run)"
+            st["stage_key"], st["stage"] = "nofund", "No company numbers on file yet"
             continue
         v_rules = valuation_rules(close, w, cfg)
         st.update({"pe": v_rules[0]["value"], "peg": v_rules[2]["value"], "pe_rel": v_rules[1]["value"]})
         if not _passes(_gates(t_rules), True):
-            st["stage"] = "waiting: trend - " + (STAGE_LABEL.get(info["trend_stage"], "")
-                                                 if info["trend_stage"] not in UPTREND else first_fail(t_rules))
+            st["stage_key"] = "trend"
+            st["stage"] = trend_block_text(info["trend_stage"], first_fail(t_rules))
             continue
         if v_rules[-1]["ok"] is False:
-            st["stage"] = "waiting: valuation - " + first_fail(v_rules)
+            st["stage_key"] = "valuation"
+            st["stage"] = ("No profits, or P/E over 100" if first_fail(v_rules).startswith("5.3")
+                           else "Too expensive versus its own history")
             continue
         setup = entry_setup(d, s50, cfg)
         if not setup:
-            st["stage"] = f"{STAGE_LABEL[info['trend_stage']]}, waiting for breakout/pullback entry"
+            st["stage_key"] = "ready"
+            st["stage"] = (("New uptrend" if info["trend_stage"] == "emerging" else "Uptrend")
+                           + " - waiting for the right entry price")
             continue
-        st["stage"] = "SIGNAL: " + setup["setup"]
+        st["stage_key"] = "signal"
+        st["stage"] = "Buy signal today - " + SETUP_WORD.get(setup["setup"], setup["setup"])
         cands.append({**w, "close": close, "setup": setup,
                       "proof": json.loads(w.get("rules") or "[]") + t_rules + v_rules})
 
@@ -1067,13 +1072,38 @@ def momentum_rows(trend, status, wl_map, score_map, sector_of):
     return out
 
 
+SETUP_WORD = {"breakout": "broke out", "pullback": "bounced off its 50-day line",
+              "pullback20": "bounced off its 20-day line"}
+TREND_BLOCK = {
+    "pullback": "Dipped below its 50-day line - not buyable now",
+    "stalling": "Trend has flattened - not buyable now",
+    "downtrend": "Price is in a downtrend",
+    "": "Not enough price history yet",
+}
+GATE_BLOCK = {
+    "4.3": "Uptrend started too long ago for a fresh entry (US rule)",
+    "4.4": "Hasn't risen far enough off its 1-year low",
+    "4.5": "Still too far below its 1-year high",
+    "4.6": "Lagging most other stocks over 6 months",
+    "4.7": "Lagging the index over 3 months",
+}
+
+
+def trend_block_text(stage, first_fail_txt):
+    """Plain-English reason a stock in/near an uptrend cannot be bought today."""
+    if stage in TREND_BLOCK:
+        return TREND_BLOCK[stage]
+    return GATE_BLOCK.get(first_fail_txt.split(" ")[0], "Price trend not strong enough yet")
+
+
 def entry_status(cfg, bars, bar_date, status, buys, missed, lookback=5):
     """Per ticker: is there a buy setup today, or a recent one that is still buyable, or a trigger close by?"""
     out = {}
     for b in buys:
-        out[b["ticker"]] = f"BUY today ({b['setup']['setup']}), limit {b['setup']['limit']:,.2f}"
+        out[b["ticker"]] = (f"BUY today - pay up to {cfg.currency}{b['setup']['limit']:,.0f} "
+                            f"({SETUP_WORD.get(b['setup']['setup'], b['setup']['setup'])})")
     for m in missed:
-        out.setdefault(m["ticker"], f"Setup today ({m['setup']}) but skipped: {m['reason']}")
+        out.setdefault(m["ticker"], f"Buy signal today but skipped: {m['reason']}")
     p = cfg.data_dir / "setups.csv"
     if p.exists():
         log = pd.read_csv(p, dtype={"ticker": str})
@@ -1088,28 +1118,28 @@ def entry_status(cfg, bars, bar_date, status, buys, missed, lookback=5):
             if close is None:
                 continue
             if close < r.structure_low:
-                v = "expired: broke below the setup low"
+                v = "missed - the price broke down since"
             elif close > r.limit:
-                v = f"expired: now {close / r.limit - 1:+.1%} above its limit, don't chase"
+                v = f"missed - now {close / r.limit - 1:+.0%} above the buy price, don't chase"
             else:
-                v = f"still under its limit {r.limit:,.2f}"
-            out[r.ticker] = f"Setup {ago} session{'s' if ago > 1 else ''} ago ({r.setup}): {v}"
+                v = f"still buyable up to {cfg.currency}{r.limit:,.0f}"
+            out[r.ticker] = f"Buy signal {ago} day{'s' if ago > 1 else ''} ago: {v}"
     for t, st in status.items():
         if t in out or st.get("trend_stage") not in IN_UPTREND:
             continue
         close, piv = st.get("close"), st.get("pivot")
         if st.get("trend_stage") == "pullback":
-            out[t] = f"Below 50DMA: watch for a close back above {st['s50']:,.2f}"
+            out[t] = f"Dipped - wait for a close back above {cfg.currency}{st['s50']:,.0f}"
         elif _ok(piv) and piv * 0.98 <= close < piv:
-            out[t] = f"Near breakout: {close / piv - 1:.1%} below {piv:,.2f}"
+            out[t] = f"Almost there - {abs(close / piv - 1):.1%} below {cfg.currency}{piv:,.0f}"
         elif _ok(st.get("ext20")) and 0 <= st["ext20"] <= 0.02:
-            out[t] = f"In 20DMA pullback zone ({st['s20']:,.2f})"
+            out[t] = f"In the dip-buy zone, at its 20-day line ({cfg.currency}{st['s20']:,.0f})"
         elif _ok(st.get("ext50")) and 0 <= st["ext50"] <= 0.03:
-            out[t] = f"In 50DMA pullback zone ({st['s50']:,.2f})"
+            out[t] = f"In the dip-buy zone, at its 50-day line ({cfg.currency}{st['s50']:,.0f})"
         elif _ok(st.get("ext20")) and st["ext20"] > 0.15:
-            out[t] = f"Extended: {st['ext20']:.0%} above 20DMA, wait for a pullback"
+            out[t] = f"Too hot - {st['ext20']:.0%} above its 20-day line, wait for a dip"
         else:
-            out[t] = "Waiting"
+            out[t] = "Nothing to do today"
     return out
 
 
@@ -1126,11 +1156,12 @@ def _board_numbers(w, pr):
 def trigger_text(cfg, st):
     cur, parts = cfg.currency, []
     if _ok(st.get("pivot")):
-        parts.append(f"Breakout > {cur}{st['pivot']:,.0f}" +
-                     (f" on vol > {1.5 * st['vol50']:,.0f}" if _ok(st.get("vol50")) else ""))
+        vol = f" on more than {1.5 * st['vol50']:,.0f} shares" if _ok(st.get("vol50")) else ""
+        parts.append(f"Buy if it closes above {cur}{st['pivot']:,.0f}{vol}")
     if _ok(st.get("s20")) and _ok(st.get("s50")):
-        parts.append(f"pullback to {cur}{st['s20']:,.0f} (20DMA) / {cur}{st['s50']:,.0f} (50DMA)")
-    return "; ".join(parts)
+        lo, hi = sorted((st["s20"], st["s50"]))
+        parts.append(f"or if it dips to {cur}{lo:,.0f}-{cur}{hi:,.0f} (its 20- and 50-day lines) and bounces")
+    return ", ".join(parts)
 
 
 def stock_links(ticker: str) -> tuple[str, str]:
@@ -1243,17 +1274,18 @@ def next_text(cfg, w, st, bar_date):
     stage = st.get("stage", "")
     s50, s200, piv, vol = st.get("s50"), st.get("s200"), st.get("pivot"), st.get("vol50")
     vol_need = f"{1.5 * vol:,.0f}" if _ok(vol) else "1.5x average"
-    if stage.startswith("SIGNAL"):
+    key = st.get("stage_key", "")
+    if key == "signal":
         nxt.append("Buy setup triggered: see the Signals tab for limit, stop and size")
-    elif "waiting for breakout/pullback" in stage:
+    elif key == "ready":
         s20 = st.get("s20")
         nxt.append(f"Breakout trigger: close above {cur}{piv:,.0f} on volume > {vol_need} shares")
         if _ok(s20):
             nxt.append(f"Or pullback trigger: dip to ~{cur}{s20:,.0f} (20-day avg) or ~{cur}{s50:,.0f} (50-day avg), "
                        "then close above the prior day's high")
-    elif stage.startswith("waiting: valuation"):
+    elif key == "valuation":
         nxt.append("Trend is fine but valuation fails: wait for the price or the P/E to cool")
-    elif stage.startswith("waiting: trend"):
+    elif key == "trend":
         ts = st.get("trend_stage")
         if ts == "pullback" and _ok(s50):
             nxt.append(f"Uptrend intact, price dipped below the 50-day avg: trigger is a close back above {cur}{s50:,.0f}")
@@ -1266,11 +1298,10 @@ def next_text(cfg, w, st, bar_date):
                      if s50 < s200 else "")
             nxt.append(f"Trend trigger: close above {cur}{max(s50, s200):,.0f} with the 50-day avg "
                        f"({cur}{s50:,.0f}) turning up{extra}")
-    in_trend_wait = "waiting for breakout/pullback" in stage
-    if (stage.startswith("SIGNAL") or in_trend_wait) and _ok(st.get("close")):
+    if key in ("signal", "ready") and _ok(st.get("close")):
         nxt.append(f"Risk plan if entered near {cur}{st['close']:,.0f}: stop no lower than {cur}{st['close'] * 0.92:,.0f} "
                    f"(-8%); at +15% ({cur}{st['close'] * 1.15:,.0f}) move stop to entry, then trail the 50-day avg")
-    elif stage.startswith("waiting"):
+    elif key in ("trend", "valuation", "nofund"):
         nxt.append("Not buyable yet: no entry until the trigger above is met")
     peg, eps, g = st.get("peg"), w.get("eps_ttm"), w.get("profit_cagr_3y")
     if _ok(peg) and peg > 2 and _ok(eps) and _ok(g) and g > 0:

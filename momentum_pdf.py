@@ -148,9 +148,9 @@ def plain_reason(reason):
 def action(r, sig, cur):
     """(full sentence, short label) for what to do."""
     es, trig, status = str(r["Entry status"]), str(r["Trigger to watch"]), str(r["Status today"])
-    m = re.search(r"Breakout > \D?([\d,]+)", trig)
+    m = re.search(r"closes above \D?([\d,]+)", trig)
     piv = num(m.group(1).replace(",", "")) if m else None
-    m = re.search(r"pullback to \D?([\d,]+) \(20DMA\) / \D?([\d,]+) \(50DMA\)", trig)
+    m = re.search(r"dips to \D?([\d,]+)\D{1,3}([\d,]+)", trig)
     p20, p50 = (num(m.group(1).replace(",", "")), num(m.group(2).replace(",", ""))) if m else (None, None)
     t = r["Ticker"]
     if es.startswith("BUY today") and t in sig:
@@ -160,33 +160,34 @@ def action(r, sig, cur):
     if "skipped:" in es:
         why = plain_reason(es.split("skipped:", 1)[1])
         return f"A buy setup fired today but was not taken: {why}.", f"Setup skipped: {why}"
-    if "still under its limit" in es:
-        lim = num(re.search(r"limit ([\d,.]+)", es).group(1).replace(",", ""))
+    if "still buyable" in es:
+        lim = num(re.search(r"up to \D?([\d,.]+)", es).group(1).replace(",", ""))
         return f"Recent buy setup still valid: buy at or below {money(cur, lim)}.", f"Still buyable to {money(cur, lim)}"
-    if "expired" in es:
+    if "missed -" in es:
         return "Recent setup missed (price moved away). Wait for the next pullback.", "Missed: wait for pullback"
-    if status.startswith("waiting: trend - 4.3"):
+    if status.startswith("Uptrend started too long ago"):
         if not str(r["50/200 cross"]).startswith("50DMA"):        # already crossed (recently or 1y+ ago)
             return ("US rules buy only within 65 trading days of the golden cross; this trend is older. "
                     "Watch only."), "Watch only (US: trend too old)"
         return ("US rules need the 50-day avg to cross above the 200-day avg first. Watch for the cross."), \
             "Watch for golden cross"
-    if status.startswith("waiting: trend - 4."):
+    if status.startswith("Lagging"):
         return "Lagging the market on US rules. Watch only.", "Watch only (lagging)"
-    val = " Valuation is above its normal range, so prefer a dip." if "valuation" in status else ""
-    if es.startswith("Near breakout"):
+    val = (" Valuation is above its normal range, so prefer a dip."
+           if "expensive" in status or "P/E over 100" in status else "")
+    if es.startswith("Almost there"):
         return (f"Close to a breakout: buy on a close above {money(cur, piv)} with strong volume.{val}",
                 f"Near breakout {money(cur, piv)}")
-    if "20DMA pullback zone" in es:
+    if "20-day line" in es and "dip-buy zone" in es:
         return (f"In the buy zone near its 20-day avg ({money(cur, p20)}): buy if it closes above the previous "
                 f"day's high.{val}", f"Buy zone (20-day avg {money(cur, p20)})")
-    if "50DMA pullback zone" in es:
+    if "50-day line" in es and "dip-buy zone" in es:
         return (f"In the buy zone near its 50-day avg ({money(cur, p50)}): buy if it closes above the previous "
                 f"day's high.{val}", f"Buy zone (50-day avg {money(cur, p50)})")
-    if es.startswith("Extended"):
+    if es.startswith("Too hot"):
         return (f"Stretched far above its 20-day avg: don't chase; wait for a dip toward {money(cur, p20)}.{val}",
                 "Stretched: wait for a dip")
-    if es.startswith("Below 50DMA"):
+    if es.startswith("Dipped"):
         return (f"Dipped below its 50-day avg: wait for a close back above {money(cur, p50)}.{val}",
                 f"Wait for close > {money(cur, p50)}")
     return (f"Wait: buy on a close above {money(cur, piv)} (breakout) or on a bounce from about {money(cur, p20)} "
