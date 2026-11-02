@@ -53,11 +53,26 @@ jobs:
         env:
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
         run: python sheet_sync.py us
+      - name: Momentum PDF and email (new session only)
+        if: success()
+        continue-on-error: true
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        run: |
+          if [ -n "$(git status --porcelain data/us/sheet_rows)" ] || [ "${{ github.event.inputs.args }}" = "--pdf" ]; then
+            pip install -q matplotlib
+            python momentum_pdf.py
+            python send_pdf_email.py
+          else
+            echo "No new US session; no PDF or email."
+          fi
       - name: Save reports and state
         if: always()
         run: |
           git config user.name "quality-momentum-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/us reports/us 2>/dev/null || true
+          git add data/us reports/us reports/momentum 2>/dev/null || true
           if [ -s logs/us-latest.log ] && ! grep -q '^No new session' logs/us-latest.log; then git add -f logs/us-latest.log; fi
           git diff --cached --quiet || (git commit -m "US scan $(date -u +%F)" && git pull --rebase && git push)

@@ -1537,7 +1537,10 @@ def cli(cfg: Config):
     ap.add_argument("--n", type=int, help="override number of stocks N")
     ap.add_argument("--hours", help="run only in these hours, e.g. 7-11 (weekdays only); otherwise exit")
     ap.add_argument("--hours-tz", default=None, help="time zone for --hours (default: the market's)")
+    ap.add_argument("--pdf", action="store_true", help="skip the scan (the workflow then only builds/emails the PDF)")
     a = ap.parse_args()
+    if a.pdf:
+        return
     if a.hours:
         lo, hi = (int(x) for x in a.hours.split("-"))
         now = dt.datetime.now(ZoneInfo(a.hours_tz or cfg.tz))
