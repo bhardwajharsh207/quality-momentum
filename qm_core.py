@@ -1042,7 +1042,12 @@ BOARD_HEADERS = ["Ticker", "Sector", "Trend stage", "In stage since", "Days in s
                  "% from 20DMA", "% from 50DMA", "% from 52w high", "Last close", "P/E", "PEG",
                  "Fund. rules passed", "Rules missed", "Next results", "Why it's great",
                  "vs competitors (sector peers in index)", "Next: what to check", "Screener.in", "Yahoo Finance",
-                 "Session"]
+                 "Session",
+                 # numeric metrics (for the website and sorting); sector medians cover every index stock in the sector
+                 "ROCE/ROE", "OCF/Profit", "Debt/Equity", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
+                 "Sector peers", "Sector median ROCE/ROE", "Sector median sales YoY", "Sector median profit YoY",
+                 "Sector median P/E", "Sector median Debt/Equity", "Rank in sector (ROCE/ROE)",
+                 "Rank in sector (profit growth)", "Is financial"]
 TODAY_HEADERS = ["Section", "Ticker", "Detail", "Trend stage", "Days in stage", "Score", "Last close", "Link"]
 TODAY_BLOCK = {"india": ("A", "H"), "us": ("J", "Q")}
 STAGE_ORDER = {"emerging": 0, "confirmed": 1, "pullback": 2}
@@ -1106,6 +1111,16 @@ def entry_status(cfg, bars, bar_date, status, buys, missed, lookback=5):
         else:
             out[t] = "Waiting"
     return out
+
+
+def _board_numbers(w, pr):
+    pr = pr or {}
+    rk = lambda k: int(pr[k]) if _ok(pr.get(k)) else ""
+    return [_num(w.get("quality_metric")), _num(w.get("ocf_np"), 2), _num(w.get("de"), 2),
+            _num(w.get("q_sales_yoy")), _num(w.get("q_profit_yoy")), _num(w.get("accel")),
+            pr.get("n", ""), _num(pr.get("med_q")), _num(pr.get("med_sales")), _num(pr.get("med_profit")),
+            _num(pr.get("med_pe"), 1), _num(pr.get("med_de"), 2), rk("rank_q"), rk("rank_g"),
+            "yes" if w.get("is_financial") in (True, "True") else ""]
 
 
 def trigger_text(cfg, st):
@@ -1373,7 +1388,8 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, st
             str(ne) if _ok(ne) else "",
             why_text(w, st) if t in top_ids else "",
             peers_text(w, (peers or {}).get(t)) if t in top_ids else "",
-            next_text(cfg, w, st, bar_date) if t in top_ids else "", *stock_links(t), sess])
+            next_text(cfg, w, st, bar_date) if t in top_ids else "", *stock_links(t), sess,
+            *_board_numbers(w, (peers or {}).get(t))])
 
     # Today: this market's block - actions, then changes, then stocks close to a trigger
     tl = [[f"{m}: session {sess}", "", f"run {fetched_at}. In uptrend: {count('confirmed')} confirmed, "
@@ -1415,7 +1431,7 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, st
     c1, c2 = TODAY_BLOCK[cfg.market]
     board_tab = f"Board - {'India' if cfg.market == 'india' else 'US'}"
     replace = {
-        board_tab: {"clear": f"'{board_tab}'!A1:AF5000", "start": f"'{board_tab}'!A1",
+        board_tab: {"clear": f"'{board_tab}'!A1:AZ5000", "start": f"'{board_tab}'!A1",
                     "values": [BOARD_HEADERS] + board},
         "Today": {"clear": f"'Today'!{c1}1:{c2}300", "start": f"'Today'!{c1}1",
                   "values": [TODAY_HEADERS] + tl},
