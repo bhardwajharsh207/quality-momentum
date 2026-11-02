@@ -2,15 +2,16 @@ Bullish momentum (INDIA 2026-10-30, US 2026-10-30)
 
 INDIA: NEW MOMENTUM
   IGIL           Emerging, 3 days             Stretched: wait for a dip
+  PERSISTENT     Emerging, 15 days            Setup skipped: all position slots are full
   LTTS           Emerging, 7 days             Near breakout ₹4,297
   HCLTECH        Emerging, 5 days             Wait: above ₹1,424 or dip to ₹1,323
-  CYIENT         Emerging, 28 days            Wait: above ₹1,230 or dip to ₹1,148
+  CYIENT         Emerging, 29 days            Wait: above ₹1,230 or dip to ₹1,148
 
 INDIA: ONGOING MOMENTUM
   COFORGE        Confirmed uptrend, 8 days    BUY at or below ₹2,115
-  ACUTAAS        Confirmed uptrend, 3 days    BUY at or below ₹3,983
+  ACUTAAS        Confirmed uptrend, 4 days    BUY at or below ₹3,983
   SONACOMS       Confirmed uptrend, 2 days    Wait: above ₹879 or dip to ₹809
-  APLAPOLLO      Confirmed uptrend, 3 days    Buy zone (50-day avg ₹2,158)
+  APLAPOLLO      Confirmed uptrend, 4 days    Buy zone (50-day avg ₹2,158)
   CPPLUS         Confirmed uptrend, 21 days   Buy zone (50-day avg ₹3,787)
 
 US: NEW MOMENTUM
