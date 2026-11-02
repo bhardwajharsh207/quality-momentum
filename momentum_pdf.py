@@ -29,6 +29,7 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 import qm_core as qc
+import importlib
 
 BASE = Path(__file__).resolve().parent
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#8a8984", "#e6e5e1"
@@ -287,7 +288,15 @@ def main():
         for title, df in [(f"{label}: new momentum", new), (f"{label}: ongoing momentum", ongoing)]:
             df = df[df["Ticker"].map(lambda t: t in px and len(px[t]) >= 252)]
             sections.append((title, df, cur, sig))
+            cfg = importlib.import_module(f"{m}_scan").CONFIG
             for _, r in df.iterrows():
+                # stage dates from the same prices the chart draws, so text and shading always agree
+                h = qc.stage_history(qc.trend_stages(px[r["Ticker"]]["Close"].to_frame("x"), cfg)["stage"]["x"])
+                r = r.copy()
+                if h["up_since"]:
+                    r["In uptrend since"], r["Days in uptrend"] = str(h["up_since"]), h["days_up"]
+                if h["days_in_stage"]:
+                    r["Days in stage"] = h["days_in_stage"]
                 f = fund.loc[r["Ticker"]].to_dict() if r["Ticker"] in fund.index else None
                 blocks.append((title, px[r["Ticker"]], r, f, sig, cur))
     out = BASE / "reports" / "momentum"
