@@ -87,9 +87,11 @@ def money(cur, v):
 def trend_line(r):
     days, up_days = r["Days in stage"], r["Days in uptrend"]
     up_since = pd.to_datetime(r["In uptrend since"], errors="coerce")
-    parts = [f"{r['Trend stage']} for {days} trading days"]
-    if not pd.isna(up_since):
-        parts[0] += f"; uptrend since {up_since:%d %b %Y} ({up_days} days)"
+    if pd.isna(up_since):
+        parts = [f"{r['Trend stage']} for {days} trading days"]
+    else:
+        parts = [f"In an uptrend for {up_days} trading days (since {up_since:%d %b %Y}); "
+                 f"{r['Trend stage'].lower()} for the last {days}"]
     e50, hi, ix = num(r["% from 50DMA"]), num(r["% from 52w high"]), num(r["3m vs index"])
     if e50 is not None:
         parts.append(f"price {abs(e50):.0%} {'above' if e50 >= 0 else 'below'} its 50-day avg")
@@ -258,7 +260,8 @@ def cover(pdf, sections, sessions, summary):
             y -= 0.015
         for _, r in df.iterrows():
             short = action(r, sig, cur)[1]
-            vals = [r["Ticker"].replace(".NS", ""), f"{r['Trend stage']}, {r['Days in stage']} days", short]
+            stage = "Emerging" if r["Trend stage"] == "Emerging" else "Confirmed"
+            vals = [r["Ticker"].replace(".NS", ""), f"{stage}, uptrend {r['Days in uptrend']} days", short]
             for xx, vv in zip([0.07, 0.24, 0.47], vals):
                 fig.text(xx, y, vv, fontsize=8, color=INK, va="top",
                          fontweight="bold" if vv.startswith("BUY") else "normal")
