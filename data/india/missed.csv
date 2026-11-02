@@ -3,9 +3,10 @@ date,ticker,score,setup,reason
 2026-10-30,COFORGE.NS,0.822,breakout,8.6 position size below 1 share
 2026-10-30,ACUTAAS.NS,0.807,breakout,8.6 position size below 1 share
 2026-10-30,GESHIP.NS,0.763,pullback20,no free slot (11.1)
-2026-10-30,LAURUSLABS.NS,0.754,pullback,no free slot (11.1)
-2026-10-30,PERSISTENT.NS,0.709,breakout,no free slot (11.1)
 2026-10-30,ABDL.NS,0.634,pullback,no free slot (11.1)
-2026-10-30,ZYDUSLIFE.NS,0.625,breakout,6C results due 2026-11-04
 2026-10-30,PVRINOX.NS,0.558,breakout,no free slot (11.1)
-2026-10-30,BEML.NS,0.477,pullback,no free slot (11.1)
+2026-10-30,LAURUSLABS.NS,0.754,pullback,no free slot (11.1)
+2026-10-30,PERSISTENT.NS,0.71,breakout,no free slot (11.1)
+2026-10-30,ZYDUSLIFE.NS,0.626,breakout,6C results due 2026-11-04
+2026-10-30,SAILIFE.NS,0.615,pullback,no free slot (11.1)
+2026-10-30,BEML.NS,0.478,pullback,no free slot (11.1)
