@@ -31,7 +31,8 @@ def load_universe() -> pd.DataFrame:
             df = pd.read_csv(io.StringIO(r.text))
             df = df[df["Series"].str.strip() == "EQ"] if "Series" in df else df
             return pd.DataFrame({"ticker": df["Symbol"].str.strip() + ".NS",
-                                 "sector": df["Industry"].str.strip()})
+                                 "sector": df["Industry"].str.strip(),
+                                 "name": df["Company Name"].str.strip()})
         except Exception as e:
             last_err = e
     raise RuntimeError(f"Nifty 500 list unavailable: {last_err}")

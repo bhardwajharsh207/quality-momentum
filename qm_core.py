@@ -730,7 +730,8 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
 
     # Universe (0.2), refreshed weekly
     uni_path = cfg.data_dir / "universe.csv"
-    if rebuild or not uni_path.exists() or age_days("universe_loaded") >= cfg.watchlist_max_age_days:
+    needs_names = cfg.market == "india" and uni_path.exists() and "name" not in uni_path.read_text().split("\n", 1)[0]
+    if rebuild or needs_names or not uni_path.exists() or age_days("universe_loaded") >= cfg.watchlist_max_age_days:
         try:
             universe = cfg.universe_loader()
             universe.to_csv(uni_path, index=False)
