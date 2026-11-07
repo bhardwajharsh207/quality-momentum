@@ -8,3 +8,4 @@ date,ticker,setup,close,limit,stop,shares,score
 2026-11-04,VEEV,pullback20,310.63,326.16,299.02,2,0.763
 2026-11-05,MSI,breakout,517.01,521.84,475.65,1,0.582
 2026-11-05,BR,breakout,193.92,198.75,178.41,4,0.54
+2026-11-06,IQV,pullback,271.83,285.42,252.38,3,0.567

@@ -268,7 +268,6 @@ J,Industrials
 JNJ,Health Care
 JCI,Industrials
 JPM,Financials
-KVUE,Consumer Staples
 KDP,Consumer Staples
 KEY,Financials
 KEYS,Information Technology
@@ -346,6 +345,7 @@ NVR,Consumer Discretionary
 NXPI,Information Technology
 ORLY,Consumer Discretionary
 OXY,Energy
+OKTA,Information Technology
 ODFL,Industrials
 OMC,Communication Services
 ON,Information Technology
