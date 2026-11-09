@@ -76,4 +76,13 @@ jobs:
           python export_site.py || true
           git add docs data/us reports/us reports/momentum 2>/dev/null || true
           if [ -s logs/us-latest.log ] && ! grep -q '^No new session' logs/us-latest.log; then git add -f logs/us-latest.log; fi
-          git diff --cached --quiet || (git commit -m "US scan $(date -u +%F)" && git pull --rebase --autostash && git push)
+          # Re-running a scan for the same session rewrites the same dated files, so a plain
+          # rebase hits add/add conflicts: -X theirs keeps this run's fresh output. Retry covers
+          # the push race when the India and US jobs finish together.
+          if ! git diff --cached --quiet; then
+            git commit -m "US scan $(date -u +%F)"
+            for i in 1 2 3; do
+              git pull --rebase --autostash -X theirs && git push && break
+              echo "save attempt $i failed; retrying"; sleep $((RANDOM % 10 + 5))
+            done
+          fi
