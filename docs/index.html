@@ -166,6 +166,10 @@ a { color: var(--accent) }
 .rr div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px }
 .rr small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em }
 .rr b { font: 600 15px var(--mono) }
+.adv { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 22px }
+.adv table.m td.n { white-space: nowrap }
+.adv table.m td { padding: 5px 0 }
+.adv h4 { font: 600 12px var(--body); text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin: 0 0 2px }
 .card h3 { font: 600 13px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px }
 .actionbox { background: var(--cs); border-color: var(--c) }
 .actionbox p { margin: 0; font-weight: 500 }
@@ -314,6 +318,10 @@ function shape(o) {
     mSales: num(o["Sector median sales YoY"]), mProfit: num(o["Sector median profit YoY"]), mPe: num(o["Sector median P/E"]),
     mDe: num(o["Sector median Debt/Equity"]), rRoce: num(o["Rank in sector (ROCE/ROE)"]), rProfit: num(o["Rank in sector (profit growth)"]),
     fin: o["Is financial"] === "yes",
+    atr: num(o["ATR% (14d)"]), adv: num(o["Avg daily value (20d)"]), volRel: num(o["Volume vs 50d avg"]),
+    r1m: num(o["Return 1m"]), r3m: num(o["Return 3m"]), r6m: num(o["Return 6m"]), r12m: num(o["Return 12m"]),
+    dd1y: num(o["Max drawdown 1y"]), baseLen: num(o["Base length (days)"]),
+    peRel: num(o["P/E vs own median"]), peOwn: num(o["Own median P/E (5y)"]), pCagr: num(o["Profit CAGR 3y"]),
   };
   const lv = (re) => { const m = r.trig.match(re); return m ? num(m[1]) : null };
   r.piv = lv(/Breakout > \D?([\d,.]+)/); r.p20 = lv(/pullback to \D?([\d,.]+) \(20DMA\)/); r.p50 = lv(/\/ \D?([\d,.]+) \(50DMA\)/);
@@ -484,6 +492,46 @@ function changesHtml(rows) {
 }
 
 /* ---------------- drawer ---------------- */
+/* a metric row with the exact (unrounded) figure on hover */
+const exPct = (v, d = 2) => v == null ? "" : `Exact: ${(v * 100).toFixed(d)}%`;
+const exNum = (v, d = 2, suf = "") => v == null ? "" : `Exact: ${v.toFixed(d)}${suf}`;
+const mrow = (label, display, exact, cls = "") =>
+  `<tr><td>${label}</td><td class="n ${cls}${exact ? " vx" : ""}"${exact ? ` title="${esc(exact)}"` : ""}>${display}</td></tr>`;
+const bigVal = (v) => v == null ? "—" : state.market === "india"
+  ? `${cur()}${(v / 1e7).toFixed(1)} Cr` : `${cur()}${(v / 1e6).toFixed(1)}M`;
+
+function advancedHtml(r) {
+  const any = [r.atr, r.adv, r.r1m, r.r12m, r.dd1y, r.peRel, r.pCagr].some((x) => x != null);
+  if (!any) return `<div class="card span2"><h3>Advanced</h3><p class="chartnote">Risk, liquidity and valuation-history metrics appear here after the next scan run.</p></div>`;
+  const stopATR = r.atr ? 0.08 / r.atr : null;
+  const ladder = [["1 month", r.r1m], ["3 months", r.r3m], ["6 months", r.r6m], ["12 months", r.r12m]];
+  const liquid = r.adv == null ? "" : r.adv >= (state.market === "india" ? 5e7 : 5e7) ? "easy to trade" : "thin — use limit orders";
+  const bits = [];
+  if (r.atr != null) bits.push(`It moves about <b>${pct(r.atr, false, 1)} a day</b>, so the 8% stop sits ${stopATR ? `<b>${stopATR.toFixed(1)}×</b> that daily move away` : ""}${stopATR && stopATR < 2 ? " — tight enough that normal noise could stop you out" : stopATR && stopATR > 5 ? " — wide, so size the position down" : " — a reasonable buffer"}`);
+  if (r.dd1y != null) bits.push(`worst fall in the last year was <b>${pct(r.dd1y, true, 0)}</b>`);
+  if (r.peRel != null) bits.push(`it trades at <b>${r.peRel.toFixed(2)}×</b> its own 5-year median P/E${r.peRel > 1.3 ? " (expensive versus its own history)" : r.peRel < 1 ? " (below its own history)" : ""}`);
+  return `<div class="card span2"><h3>Advanced — risk, liquidity &amp; valuation history</h3>
+    <div class="adv">
+      <div><h4>Risk</h4><table class="m">
+        ${mrow("Daily move (ATR, 14d)", pct(r.atr, false, 1), exPct(r.atr))}
+        ${mrow("8% stop, in daily moves", stopATR ? stopATR.toFixed(1) + "×" : "—", exNum(stopATR, 2, "×"))}
+        ${mrow("Worst fall, last 1y", pct(r.dd1y, true, 1), exPct(r.dd1y))}
+        ${mrow("Quiet-base length", r.baseLen ? r.baseLen + " days" : "—", "")}</table></div>
+      <div><h4>Liquidity</h4><table class="m">
+        ${mrow("Traded/day (20d avg)", bigVal(r.adv), r.adv == null ? "" : `Exact: ${cur()}${Math.round(r.adv).toLocaleString("en-IN")}`)}
+        ${mrow("Volume vs 50-day avg", r.volRel == null ? "—" : r.volRel.toFixed(2) + "×", exNum(r.volRel, 3, "×"))}</table>
+        ${liquid ? `<p class="chartnote">${liquid}</p>` : ""}</div>
+      <div><h4>Return ladder</h4><table class="m">
+        ${ladder.map(([l, v]) => mrow(l, pct(v, true, 1), exPct(v), sgn(v))).join("")}</table></div>
+      <div><h4>Valuation history</h4><table class="m">
+        ${mrow("P/E vs own 5-yr median", r.peRel == null ? "—" : r.peRel.toFixed(2) + "×", exNum(r.peRel, 3, "×"), r.peRel == null ? "" : r.peRel <= 1.3 ? "pos" : "neg")}
+        ${mrow("Its own median P/E (5y)", r.peOwn == null ? "—" : r.peOwn.toFixed(1) + "x", exNum(r.peOwn, 2, "x"))}
+        ${mrow("Profit growth, 3-yr CAGR", pct(r.pCagr, true, 1), exPct(r.pCagr), sgn(r.pCagr))}</table></div>
+    </div>
+    ${bits.length ? `<p class="takeaway">${bits.join("; ")}.</p>` : ""}
+    <p class="chartnote">Risk and return figures are computed from daily prices up to the ${fmtDate(r.session)} close. Hover any underlined number for its exact value.</p></div>`;
+}
+
 function verdictChip(k) { const m = { good: "Strong", ok: "Mixed", bad: "Weak" }; return `<span class="verdict ${k}">${m[k]}</span>`; }
 
 function bizTakeaway(r) {
@@ -555,19 +603,21 @@ function openDrawer(t, silent) {
       <tr><td>${T("stage","Stage")}</td><td class="n">${esc(r.stage)}, ${r.dStage ?? "—"} days</td></tr>
       <tr><td>In uptrend since</td><td class="n">${r.upSince ? fmtDate(r.upSince) + ` (${r.dUp} days)` : "—"}</td></tr>
       <tr><td>${T("avg50","50-day")} vs ${T("avg200","200-day average")}</td><td class="n">${esc(r.cross || "—")}</td></tr>
-      <tr><td>${T("rs","6-month strength")} (percentile)</td><td class="n">${r.rs == null ? "—" : Math.round(r.rs * 100) + " / 100"}</td></tr>
-      <tr><td>${T("x3","3-month return vs index")}</td><td class="n ${sgn(r.x3)}">${pct(r.x3, true, 1)}</td></tr>
-      <tr><td>Above 20-day avg</td><td class="n">${pct(r.e20, true, 1)}</td></tr>
-      <tr><td>Above 50-day avg</td><td class="n">${pct(r.e50, true, 1)}</td></tr>
-      <tr><td>${T("hi","From 52-week high")}</td><td class="n">${pct(r.hi, true, 1)}</td></tr></table><p class="takeaway">${txt}</p></div>`; })()}
+      ${mrow(`${T("rs","6-month strength")} (percentile)`, r.rs == null ? "—" : Math.round(r.rs * 100) + " / 100", r.rs == null ? "" : `Exact: ${(r.rs * 100).toFixed(1)} — it beat ${(r.rs * 100).toFixed(1)}% of the index over 6 months`)}
+      ${mrow(T("x3","3-month return vs index"), pct(r.x3, true, 1), exPct(r.x3), sgn(r.x3))}
+      ${mrow("Above 20-day avg", pct(r.e20, true, 1), exPct(r.e20))}
+      ${mrow("Above 50-day avg", pct(r.e50, true, 1), exPct(r.e50))}
+      ${mrow(T("hi","From 52-week high"), pct(r.hi, true, 1), exPct(r.hi))}</table><p class="takeaway">${txt}</p></div>`; })()}
     ${(() => { const [k, txt] = valTakeaway(r); return `<div class="card"><h3>3 · ${T("gate4","Is the price sane?")}${verdictChip(k)}</h3><table class="m">
-      <tr><td>${T("pe","P/E")} (trailing)</td><td class="n">${r.pe == null ? "—" : r.pe.toFixed(0) + "x"}</td></tr>
-      <tr><td>Sector median P/E</td><td class="n">${r.mPe == null ? "—" : r.mPe.toFixed(0) + "x"}</td></tr>
-      <tr><td>PEG (P/E ÷ growth)</td><td class="n">${r.peg == null ? "—" : r.peg.toFixed(2)}</td></tr></table><p class="takeaway">${txt}</p></div>`; })()}
+      ${mrow(`${T("pe","P/E")} (trailing)`, r.pe == null ? "—" : r.pe.toFixed(0) + "x", exNum(r.pe, 2, "x"))}
+      ${mrow("Sector median P/E", r.mPe == null ? "—" : r.mPe.toFixed(0) + "x", r.mPe == null ? "" : `Exact: ${r.mPe.toFixed(2)}x — median of ${r.nPeers ?? "?"} ${esc(r.sector)} companies`)}
+      ${mrow("PEG (P/E ÷ growth)", r.peg == null ? "—" : r.peg.toFixed(2), exNum(r.peg, 3))}
+      ${mrow("P/E vs its own 5-yr median", r.peRel == null ? "—" : r.peRel.toFixed(2) + "×", exNum(r.peRel, 3, "×"), r.peRel == null ? "" : r.peRel <= 1.3 ? "pos" : "neg")}</table><p class="takeaway">${txt}</p></div>`; })()}
     <div class="card span2"><h3>4 · ${T("entry","Is there a trigger, and what's the risk?")}</h3>${positionHtml(r)}${riskReward(r)}</div>
     <div class="card span2"><h3>${T("score","Overall score")} ${r.score == null ? "" : r.score.toFixed(2)} / 1.00</h3><div class="qgm">
       ${[["Quality", r.q], ["Growth", r.g], ["Momentum", r.m]].map(([l, v]) => `<span>${l}</span><span class="bar"><i style="width:${Math.round((v || 0) * 100)}%"></i></span><span class="num">${v == null ? "—" : Math.round(v * 100)}</span>`).join("")}
       </div>${scoreTakeaway(r)}</div>
+    ${advancedHtml(r)}
     </div>
     ${eventsHtml(r)}
     ${r.nextText ? `<div class="card"><h3>${T("next","What to check next")}</h3><p class="textblock">${esc(r.nextText)}</p></div>` : ""}`;

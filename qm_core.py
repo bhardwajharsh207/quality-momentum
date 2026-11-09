@@ -917,7 +917,8 @@ def run(cfg: Config, src=None, rebuild=False, force=False, log=print) -> Path | 
         st = {"close": round(close, 2), "rs_pct": pct126.get(t), **info,
               "vol50": float(d["Volume"].iloc[-51:-1].mean()),
               "pivot": base["pivot"] if base else float(d["High"].iloc[-60:].max()),
-              "base_len": base["length"] if base else None, "excess63": w["excess63"]}
+              "base_len": base["length"] if base else None, "excess63": w["excess63"],
+              **risk_metrics(d)}
         status[t] = st
         if not w.get("passed"):
             st["stage_key"], st["stage"] = "nofund", "No company numbers on file yet"
@@ -1053,7 +1054,11 @@ BOARD_HEADERS = ["Ticker", "Sector", "Trend stage", "In stage since", "Days in s
                  "ROCE/ROE", "OCF/Profit", "Debt/Equity", "Qtr sales YoY", "Qtr profit YoY", "Profit accel",
                  "Sector peers", "Sector median ROCE/ROE", "Sector median sales YoY", "Sector median profit YoY",
                  "Sector median P/E", "Sector median Debt/Equity", "Rank in sector (ROCE/ROE)",
-                 "Rank in sector (profit growth)", "Is financial"]
+                 "Rank in sector (profit growth)", "Is financial",
+                 # advanced metrics (risk, liquidity, return ladder, valuation history)
+                 "ATR% (14d)", "Avg daily value (20d)", "Volume vs 50d avg", "Return 1m", "Return 3m",
+                 "Return 6m", "Return 12m", "Max drawdown 1y", "Base length (days)", "P/E vs own median",
+                 "Own median P/E (5y)", "Profit CAGR 3y"]
 TODAY_HEADERS = ["Section", "Ticker", "Detail", "Trend stage", "Days in stage", "Score", "Last close", "Link"]
 TODAY_BLOCK = {"india": ("A", "H"), "us": ("J", "Q")}
 STAGE_ORDER = {"emerging": 0, "confirmed": 1, "pullback": 2}
@@ -1144,14 +1149,41 @@ def entry_status(cfg, bars, bar_date, status, buys, missed, lookback=5):
     return out
 
 
-def _board_numbers(w, pr):
-    pr = pr or {}
+def risk_metrics(d: pd.DataFrame) -> dict:
+    """Price-derived risk, liquidity and return numbers for the board (ATR, turnover, returns, drawdown)."""
+    out = {}
+    try:
+        c, h, l, v = d["Close"], d["High"], d["Low"], d["Volume"]
+        prev = c.shift(1)
+        tr = pd.concat([h - l, (h - prev).abs(), (l - prev).abs()], axis=1).max(axis=1)
+        last = float(c.iloc[-1])
+        atr = float(tr.rolling(14).mean().iloc[-1])
+        out["atr_pct"] = atr / last if last else None
+        out["adv20"] = float((c * v).iloc[-20:].mean())          # average daily traded value
+        v50 = float(v.iloc[-51:-1].mean())
+        out["vol_rel"] = float(v.iloc[-1]) / v50 if v50 else None
+        for k, n in (("r1m", 21), ("r3m", 63), ("r6m", 126), ("r12m", 252)):
+            out[k] = last / float(c.iloc[-1 - n]) - 1 if len(c) > n else None
+        win = c.iloc[-252:]
+        out["dd1y"] = float((win / win.cummax() - 1).min()) if len(win) else None
+    except Exception:
+        pass
+    return out
+
+
+def _board_numbers(w, pr, st=None):
+    pr, st = pr or {}, st or {}
     rk = lambda k: int(pr[k]) if _ok(pr.get(k)) else ""
     return [_num(w.get("quality_metric")), _num(w.get("ocf_np"), 2), _num(w.get("de"), 2),
             _num(w.get("q_sales_yoy")), _num(w.get("q_profit_yoy")), _num(w.get("accel")),
             pr.get("n", ""), _num(pr.get("med_q")), _num(pr.get("med_sales")), _num(pr.get("med_profit")),
             _num(pr.get("med_pe"), 1), _num(pr.get("med_de"), 2), rk("rank_q"), rk("rank_g"),
-            "yes" if w.get("is_financial") in (True, "True") else ""]
+            "yes" if w.get("is_financial") in (True, "True") else "",
+            # advanced: risk, liquidity, return ladder, valuation history
+            _num(st.get("atr_pct")), _num(st.get("adv20"), 0), _num(st.get("vol_rel"), 2),
+            _num(st.get("r1m")), _num(st.get("r3m")), _num(st.get("r6m")), _num(st.get("r12m")),
+            _num(st.get("dd1y")), st.get("base_len") or "", _num(st.get("pe_rel"), 2),
+            _num(w.get("median_pe"), 1), _num(w.get("profit_cagr_3y"))]
 
 
 def trigger_text(cfg, st):
@@ -1421,7 +1453,7 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, st
             why_text(w, st) if t in top_ids else "",
             peers_text(w, (peers or {}).get(t)) if t in top_ids else "",
             next_text(cfg, w, st, bar_date) if t in top_ids else "", *stock_links(t), sess,
-            *_board_numbers(w, (peers or {}).get(t))])
+            *_board_numbers(w, (peers or {}).get(t), st)])
 
     # Today: this market's block - actions, then changes, then stocks close to a trigger
     tl = [[f"{m}: session {sess}", "", f"run {fetched_at}. In uptrend: {count('confirmed')} confirmed, "
@@ -1463,7 +1495,7 @@ def write_sheet_rows(cfg, bar_date, fetched_at, n_universe, mom, buys, exits, st
     c1, c2 = TODAY_BLOCK[cfg.market]
     board_tab = f"Board - {'India' if cfg.market == 'india' else 'US'}"
     replace = {
-        board_tab: {"clear": f"'{board_tab}'!A1:AZ5000", "start": f"'{board_tab}'!A1",
+        board_tab: {"clear": f"'{board_tab}'!A1:CZ5000", "start": f"'{board_tab}'!A1",
                     "values": [BOARD_HEADERS] + board},
         "Today": {"clear": f"'Today'!{c1}1:{c2}300", "start": f"'Today'!{c1}1",
                   "values": [TODAY_HEADERS] + tl},
