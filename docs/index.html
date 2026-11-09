@@ -187,6 +187,7 @@ table.m th { text-align: left; font-weight: 500; color: var(--ink2); padding: 6p
 table.m td { padding: 6px 0; border-bottom: 1px solid var(--line) }
 table.m td.n, table.m th.n { text-align: right; padding-left: 10px }
 table.m tr:last-child td { border-bottom: 0 }
+table.m td.vx { cursor: help; text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 3px }
 .qgm { display: grid; grid-template-columns: 90px 1fr 44px; gap: 6px 10px; align-items: center; font-size: 13px }
 .qgm .bar { height: 8px }
 .textblock { white-space: pre-line; color: var(--ink2); font-size: 13px; margin: 0 }
@@ -610,7 +611,12 @@ function fundHtml(r, rows) {
   if (r.roce != null || r.sYoY != null) {
     const line = (name, v, med, rank, f, better) => {
       const cmp = v != null && med != null ? ((better === "hi" ? v >= med : v <= med) ? "pos" : "neg") : "";
-      return `<tr><td>${name}</td><td class="n ${cmp}">${f(v)}</td><td class="n">${f(med)}</td><td class="n">${rank ? "#" + rank + " of " + (r.nPeers ?? "?") : ""}</td></tr>`;
+      const kind = f === p0 || f === ps ? "pct" : f === x0 ? "pe" : "ratio";
+      const ex = (x) => x == null ? "—" : kind === "pct" ? (x * 100).toFixed(2) + "%" : kind === "pe" ? x.toFixed(1) + "x" : x.toFixed(2);
+      const vT = v == null ? "" : `title="Exact value: ${ex(v)}" class="n ${cmp} vx"`, vTd = v == null ? `class="n ${cmp}"` : vT;
+      const mT = med == null ? `class="n"` : `title="Sector median ${ex(med)} across ${esc(r.sector)} (${r.nPeers ?? "?"} companies in the index)" class="n vx"`;
+      const rT = rank ? `title="Ranked #${rank} of ${r.nPeers ?? "?"} ${esc(r.sector)} companies" class="n vx"` : `class="n"`;
+      return `<tr><td>${name}</td><td ${vTd}>${f(v)}</td><td ${mT}>${f(med)}</td><td ${rT}>${rank ? "#" + rank + " of " + (r.nPeers ?? "?") : ""}</td></tr>`;
     };
     const p0 = (v) => pct(v, false), ps = (v) => pct(v), x2 = (v) => v == null ? "—" : v.toFixed(2), x0 = (v) => v == null ? "—" : v.toFixed(0);
     return `<table class="m"><tr><th></th><th class="n">Stock</th><th class="n">Sector median</th><th class="n">Rank</th></tr>
@@ -620,7 +626,7 @@ function fundHtml(r, rows) {
       ${line(T("pe", "P/E"), r.pe, r.mPe, null, x0, "lo")}
       ${r.fin ? "" : line(T("de", "Debt / equity"), r.de, r.mDe, null, x2, "lo")}
       ${line(T("ocf", "Operating cash / profit"), r.ocf, null, null, x2, "hi")}</table>
-      <p class="chartnote">Sector median covers every ${state.market === "india" ? "Nifty 500" : "S&P 500"} stock in ${esc(r.sector)} (${r.nPeers ?? "?"} companies). Green = better than the median.</p>${missesHtml(r)}`;
+      <p class="chartnote">Sector median covers every ${state.market === "india" ? "Nifty 500" : "S&P 500"} stock in ${esc(r.sector)} (${r.nPeers ?? "?"} companies). Green = better than the median. <b>Hover any underlined number for its exact (unrounded) value;</b> cross-check the source financials via the Screener.in / Yahoo links above. ROCE/ROE is a multi-year average; growth is the latest quarter year-on-year; P/E and PEG are trailing.</p>${missesHtml(r)}`;
   }
   if (r.peers) return `<p class="textblock">${esc(r.peers)}</p>${missesHtml(r)}`;
   const peers = rows.filter((x) => x.sector === r.sector);
