@@ -137,10 +137,14 @@ a { color: var(--accent) }
   background: var(--ink); color: var(--surface); font: 400 12.5px/1.4 var(--body); padding: 8px 10px; border-radius: 8px; white-space: normal; text-align: left; font-weight: 400 }
 .n .tip:hover::after, .n .tip:focus::after, .head .tip:nth-last-child(-n+4):hover::after { left: auto; right: 0 }
 .qa { color: var(--ink2); font-size: 13.5px; margin: -4px 0 10px }
+.takeaway { margin: 10px 0 0; padding: 9px 11px; background: var(--raised); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 13px; line-height: 1.5; color: var(--ink2) }
+.takeaway b { color: var(--ink); font-weight: 600 }
+.verdict { font: 600 12px var(--body); text-transform: uppercase; letter-spacing: .05em; padding: 2px 8px; border-radius: 999px; margin-left: 8px }
+.verdict.good { background: var(--ready-soft); color: var(--ready) } .verdict.ok { background: var(--pull-soft); color: var(--pull) } .verdict.bad { background: var(--down-soft, var(--line)); color: var(--down) }
 
 /* Drawer */
 .scrim { position: fixed; inset: 0; background: rgb(10 12 16 / .45); z-index: 20 }
-.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, 100%); background: var(--surface); z-index: 21;
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(1000px, 100%); background: var(--surface); z-index: 21;
   border-left: 1px solid var(--line); overflow-y: auto; overscroll-behavior: contain;
   padding: calc(18px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) 20px }
 .dh { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px }
@@ -148,6 +152,15 @@ a { color: var(--accent) }
 .dh p { margin: 4px 0 0; color: var(--ink2) }
 .dh .x { margin-left: auto; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; width: 34px; height: 34px; font-size: 18px; line-height: 1 }
 .card { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin-top: 12px }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; align-items: start }
+.grid2 > .card { margin-top: 0 }
+.grid2 > .span2 { grid-column: 1 / -1 }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr } }
+.asof { color: var(--muted); font-size: 12px; margin: 4px 0 0 }
+.rr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px }
+.rr div { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px }
+.rr small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em }
+.rr b { font: 600 15px var(--mono) }
 .card h3 { font: 600 13px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px }
 .actionbox { background: var(--cs); border-color: var(--c) }
 .actionbox p { margin: 0; font-weight: 500 }
@@ -464,6 +477,55 @@ function changesHtml(rows) {
 }
 
 /* ---------------- drawer ---------------- */
+function verdictChip(k) { const m = { good: "Strong", ok: "Mixed", bad: "Weak" }; return `<span class="verdict ${k}">${m[k]}</span>`; }
+
+function bizTakeaway(r) {
+  const cmp = [];
+  if (r.roce != null && r.mRoce != null) cmp.push(r.roce >= r.mRoce);
+  if (r.sYoY != null && r.mSales != null) cmp.push(r.sYoY >= r.mSales);
+  if (r.pYoY != null && r.mProfit != null) cmp.push(r.pYoY >= r.mProfit);
+  if (r.pe != null && r.mPe != null) cmp.push(r.pe <= r.mPe);
+  if (!r.fin && r.de != null && r.mDe != null) cmp.push(r.de <= r.mDe);
+  const win = cmp.filter(Boolean).length, tot = cmp.length;
+  const k = !tot ? "ok" : win / tot >= 0.6 ? "good" : win / tot >= 0.4 ? "ok" : "bad";
+  const growth = r.pYoY == null ? "profit trend unknown" : r.pYoY > 0.2 ? "profit growing fast" : r.pYoY > 0 ? "profit still growing" : "profit flat or falling";
+  const lead = k === "good" ? "Stronger than its sector" : k === "ok" ? "Roughly in line with its sector" : "Weaker than its sector";
+  return [k, `<b>${lead}.</b> Beats the sector median on ${win} of ${tot} measures; ${growth}${r.passed ? `, passes ${esc(r.passed)} quality rules` : ""}.`];
+}
+function trendTakeaway(r) {
+  const st = (r.stage || "").toLowerCase();
+  const beat = r.x3 != null && r.x3 > 0, near = r.hi != null && r.hi > -0.03;
+  const k = st.includes("confirmed") && beat ? "good" : st.includes("downtrend") || !beat ? "bad" : "ok";
+  const lead = st.includes("confirmed") ? "Established uptrend" : st.includes("emerging") ? "Young uptrend" : st.includes("pullback") ? "Dip inside an uptrend" : "Trend: " + (r.stage || "—");
+  const bits = [];
+  if (r.rs != null) bits.push(`6-month strength ${Math.round(r.rs * 100)}/100`);
+  bits.push(beat ? "beating the index" : "lagging the index over 3 months");
+  if (near) bits.push("near 52-week highs"); else if (r.hi != null) bits.push(`${pct(r.hi, true, 0)} off its high`);
+  return [k, `<b>${lead}.</b> ${bits.join(", ")}.`];
+}
+function valTakeaway(r) {
+  if (r.pe == null) return ["ok", "<b>No P/E.</b> Loss-making or data missing — lean on cash flow and growth instead."];
+  const cheap = r.mPe != null && r.pe <= r.mPe;
+  const k = r.peg != null ? (r.peg < 1 ? "good" : r.peg < 2 ? "ok" : "bad") : cheap ? "ok" : "bad";
+  const vsSec = r.mPe != null ? `${cheap ? "below" : "above"} the sector median of ${r.mPe.toFixed(0)}x` : "no sector median";
+  const peg = r.peg != null ? ` PEG ${r.peg.toFixed(2)} — ${r.peg < 1 ? "growth more than covers the price" : r.peg < 2 ? "fair for the growth" : "rich for the growth"}.` : "";
+  return [k, `<b>${r.pe.toFixed(0)}x trailing earnings</b>, ${vsSec}.${peg}`];
+}
+function riskReward(r) {
+  const entry = r.piv || r.close; if (entry == null) return "";
+  const stop = entry * 0.92, target = entry * 1.15, rr = (target - entry) / (entry - stop);
+  return `<div class="rr"><div><small>Entry near</small><b>${money(entry)}</b></div>
+    <div><small>Stop −8%</small><b>${money(stop)}</b></div>
+    <div><small>Target +15%</small><b>${money(target)}</b></div></div>
+    <p class="chartnote">Reward:risk ≈ ${rr.toFixed(1)}:1 on the scanner's standard 8% stop / 15% first target. Levels are a plan, not advice.</p>`;
+}
+function scoreTakeaway(r) {
+  const legs = [["quality", r.q], ["growth", r.g], ["momentum", r.m]].filter((x) => x[1] != null);
+  if (!legs.length) return "";
+  const top = legs.slice().sort((a, b) => b[1] - a[1])[0], low = legs.slice().sort((a, b) => a[1] - b[1])[0];
+  return `<p class="takeaway">Driven mostly by <b>${top[0]}</b> (${Math.round(top[1] * 100)}/100); weakest on <b>${low[0]}</b> (${Math.round(low[1] * 100)}/100). Percentiles are versus the whole ${state.market === "india" ? "Nifty 500" : "S&P 500"}.</p>`;
+}
+
 function openDrawer(t, silent) {
   const rows = rowsForMarket() || [];
   const r = rows.find((x) => x.t === t);
@@ -474,23 +536,32 @@ function openDrawer(t, silent) {
   const scrim = document.createElement("div"); scrim.className = "scrim"; scrim.dataset.close = "1";
   const d = document.createElement("aside"); d.className = "drawer"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", tick(r.t));
   d.innerHTML = `
-    <div class="dh"><div><h2>${esc(tick(r.t))}</h2><p>${esc(r.sector)} · ${stageChip(r)} · last close <span class="num">${money(r.close)}</span></p></div><button class="x" data-close="1" aria-label="Close">×</button></div>
+    <div class="dh"><div><h2>${esc(tick(r.t))}</h2><p>${esc(r.sector)} · ${stageChip(r)} · last close <span class="num">${money(r.close)}</span></p>
+      <p class="asof">Prices as of ${fmtDate(r.session)} close · fundamentals from the latest reported quarter${r.nextRes ? ` · next results ${fmtDate(r.nextRes)}` : ""}</p></div><button class="x" data-close="1" aria-label="Close">×</button></div>
     <div class="card actionbox" style="--c:var(--${g.c});--cs:var(--${g.c}-soft)"><h3>${g.label}</h3><p>${r.action.html}</p>${r.trig ? `<small>Levels: ${esc(r.trig)}</small>` : ""}</div>
     <div class="card"><h3>Price chart</h3><div id="tv" style="height:380px"></div><p class="chartnote">If the chart shows a different company or a "only available on TradingView" notice, use the TradingView link below.</p>
       <div class="links" style="margin-top:10px"><a target="_blank" rel="noopener" href="${tvUrl(r.t)}">Open on TradingView ↗</a><a target="_blank" rel="noopener" href="${growwUrl(r)}">Groww ↗</a>${r.screener ? `<a target="_blank" rel="noopener" href="${esc(r.screener)}">Screener.in ↗</a>` : ""}${r.yahoo ? `<a target="_blank" rel="noopener" href="${esc(r.yahoo)}">Yahoo Finance ↗</a>` : ""}</div></div>
-    <div class="card"><h3>1 · ${T("gate1","Is it a good, growing business?")}</h3><p class="qa">Compared with other ${esc(r.sector)} companies.</p>${fundHtml(r, rows)}</div>
-    <div class="card"><h3>2 · ${T("gate3","Is the price trending up?")}</h3><table class="m">
+    <div class="grid2">
+    ${(() => { const [k, txt] = bizTakeaway(r); return `<div class="card span2"><h3>1 · ${T("gate1","Is it a good, growing business?")}${verdictChip(k)}</h3>
+      <p class="qa">Latest reported quarter vs every other ${esc(r.sector)} company in the index. Returns on capital are multi-year averages.</p>${fundHtml(r, rows)}<p class="takeaway">${txt}</p></div>`; })()}
+    ${(() => { const [k, txt] = trendTakeaway(r); return `<div class="card"><h3>2 · ${T("gate3","Is the price trending up?")}${verdictChip(k)}</h3><table class="m">
       <tr><td>${T("stage","Stage")}</td><td class="n">${esc(r.stage)}, ${r.dStage ?? "—"} days</td></tr>
       <tr><td>In uptrend since</td><td class="n">${r.upSince ? fmtDate(r.upSince) + ` (${r.dUp} days)` : "—"}</td></tr>
       <tr><td>${T("avg50","50-day")} vs ${T("avg200","200-day average")}</td><td class="n">${esc(r.cross || "—")}</td></tr>
-      <tr><td>${T("rs","6-month strength")}</td><td class="n">${r.rs == null ? "—" : Math.round(r.rs * 100)}</td></tr>
+      <tr><td>${T("rs","6-month strength")} (percentile)</td><td class="n">${r.rs == null ? "—" : Math.round(r.rs * 100) + " / 100"}</td></tr>
       <tr><td>${T("x3","3-month return vs index")}</td><td class="n ${sgn(r.x3)}">${pct(r.x3, true, 1)}</td></tr>
-      <tr><td>${T("hi","From 52-week high")}</td><td class="n">${pct(r.hi, true, 1)}</td></tr></table></div>
-    <div class="card"><h3>3 · ${T("gate4","Is the price sane?")}</h3><table class="m"><tr><td>${T("pe","P/E")}</td><td class="n">${r.pe == null ? "—" : r.pe.toFixed(0)}</td></tr></table></div>
-    <div class="card"><h3>4 · ${T("entry","Is there a trigger?")}</h3>${positionHtml(r)}</div>
-    <div class="card"><h3>${T("score","Overall score")} ${r.score == null ? "" : r.score.toFixed(2)}</h3><div class="qgm">
+      <tr><td>Above 20-day avg</td><td class="n">${pct(r.e20, true, 1)}</td></tr>
+      <tr><td>Above 50-day avg</td><td class="n">${pct(r.e50, true, 1)}</td></tr>
+      <tr><td>${T("hi","From 52-week high")}</td><td class="n">${pct(r.hi, true, 1)}</td></tr></table><p class="takeaway">${txt}</p></div>`; })()}
+    ${(() => { const [k, txt] = valTakeaway(r); return `<div class="card"><h3>3 · ${T("gate4","Is the price sane?")}${verdictChip(k)}</h3><table class="m">
+      <tr><td>${T("pe","P/E")} (trailing)</td><td class="n">${r.pe == null ? "—" : r.pe.toFixed(0) + "x"}</td></tr>
+      <tr><td>Sector median P/E</td><td class="n">${r.mPe == null ? "—" : r.mPe.toFixed(0) + "x"}</td></tr>
+      <tr><td>PEG (P/E ÷ growth)</td><td class="n">${r.peg == null ? "—" : r.peg.toFixed(2)}</td></tr></table><p class="takeaway">${txt}</p></div>`; })()}
+    <div class="card span2"><h3>4 · ${T("entry","Is there a trigger, and what's the risk?")}</h3>${positionHtml(r)}${riskReward(r)}</div>
+    <div class="card span2"><h3>${T("score","Overall score")} ${r.score == null ? "" : r.score.toFixed(2)} / 1.00</h3><div class="qgm">
       ${[["Quality", r.q], ["Growth", r.g], ["Momentum", r.m]].map(([l, v]) => `<span>${l}</span><span class="bar"><i style="width:${Math.round((v || 0) * 100)}%"></i></span><span class="num">${v == null ? "—" : Math.round(v * 100)}</span>`).join("")}
-      </div></div>
+      </div>${scoreTakeaway(r)}</div>
+    </div>
     ${eventsHtml(r)}
     ${r.nextText ? `<div class="card"><h3>${T("next","What to check next")}</h3><p class="textblock">${esc(r.nextText)}</p></div>` : ""}`;
   document.body.append(scrim, d);
@@ -538,8 +609,8 @@ function fundHtml(r, rows) {
     const p0 = (v) => pct(v, false), ps = (v) => pct(v), x2 = (v) => v == null ? "—" : v.toFixed(2), x0 = (v) => v == null ? "—" : v.toFixed(0);
     return `<table class="m"><tr><th></th><th class="n">Stock</th><th class="n">Sector median</th><th class="n">Rank</th></tr>
       ${line(T(r.fin ? "roe" : "roce", lab + " (avg)"), r.roce, r.mRoce, r.rRoce, p0, "hi")}
-      ${line(T("sales", "Sales growth, last qtr"), r.sYoY, r.mSales, null, ps, "hi")}
-      ${line(T("profit", "Profit growth, last qtr"), r.pYoY, r.mProfit, r.rProfit, ps, "hi")}
+      ${line(T("sales", "Sales growth, latest qtr (YoY)"), r.sYoY, r.mSales, null, ps, "hi")}
+      ${line(T("profit", "Profit growth, latest qtr (YoY)"), r.pYoY, r.mProfit, r.rProfit, ps, "hi")}
       ${line(T("pe", "P/E"), r.pe, r.mPe, null, x0, "lo")}
       ${r.fin ? "" : line(T("de", "Debt / equity"), r.de, r.mDe, null, x2, "lo")}
       ${line(T("ocf", "Operating cash / profit"), r.ocf, null, null, x2, "hi")}</table>
