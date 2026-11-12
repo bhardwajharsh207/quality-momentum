@@ -1,3 +1,107 @@
 Downloading prices for 504 tickers ...
-Latest bar dates across universe: 2026-11-10: 503
-WARNING: fetched data ends 2026-11-10, older than last processed session 2026-11-11. Yahoo returned stale data; skipping (nothing to overwrite).
+Latest bar dates across universe: 2026-11-12: 503
+[Layer A] refreshing 2 stocks (new results or missing data) ...
+[Layer A] evaluating fundamentals for 2 stocks ...
+# US Quality Momentum - signals from 2026-11-12 close
+
+Data: Yahoo Finance (yfinance), fetched 2026-11-12 16:21 EST. Universe 503 stocks; 195 in a confirmed or emerging uptrend (fundamentals cached).
+
+## BUY (place before next open)
+
+| Ticker | Setup | Score | Last close | Limit (max) | Stop | Disaster GTT | Shares | Value |
+|---|---|---|---|---|---|---|---|---|
+| [J](https://finance.yahoo.com/quote/J/) | pullback20 | 0.56 | $158.69 | $166.62 | $145.99 | $139.65 | 5 | $793 |
+
+Skip a buy if the stock opens above its limit (11.6). After buying, add a row to `data/us/positions.csv` with your actual fill price and the stop.
+
+### Proof: J (Industrials)
+
+Setup: dipped to rising 20DMA, pullback vol 0.75x avg, closed above prior high.
+
+| Rule | Check | Value | Threshold | Result |
+|---|---|---|---|---|
+| 2.1 | Market cap | $17B | $5B | pass (scored) |
+| 2.2 | Avg ROCE (4y) | 8.1% | 10.0% | miss (scored) |
+| 2.3 | ROCE each of last 3y | 6.2% | 8.0% | miss (scored) |
+| 2.4 | Sales CAGR (3y) | 7.1% | 10.0% | miss (scored) |
+| 2.5 | Profit CAGR (3y) | -23.4% | 12.0% | miss (scored) |
+| 2.6 | Debt / Equity | 0.74 | 0.50 | miss (scored) |
+| 2.7 | OCF / Net profit (cum.) | 1.33 | 0.80 | pass (scored) |
+| 3.1 | Qtr sales YoY | 34.5% | 15.0% | pass (scored) |
+| 3.2 | Qtr profit YoY | -24.0% | 20.0% | miss (scored) |
+| 3.3 | Profit growth acceleration | n/a | 0.0% | unverified (scored) |
+| 3.4 | Qtr EBITDA YoY | 3.1% | 15.0% | miss (scored) |
+| 4.1 | Trend stage confirmed or emerging | Confirmed uptrend | confirmed/emerging | pass |
+| 4.2 | 50DMA rising (vs 10d ago) | 144.85 vs 143.56 | higher | pass (scored) |
+| 4.2b | 200DMA rising (vs 20d ago) | 134.22 vs 132.82 | higher | pass (scored) |
+| 4.3 | 50/200 golden cross recent (entry gate) | crossed 59 sessions ago | <= 65 sessions | pass |
+| 4.4 | Close / 52w low | 1.51 | 1.30 | pass |
+| 4.5 | Close / 52w high | 0.98 | 0.75 | pass |
+| 4.6 | 6m return percentile | 0.92 | 0.70 | pass |
+| 4.7 | 3m return vs benchmark | 10.0% vs -2.5% | higher | pass |
+| 5.3 | P/E (hard cap, positive EPS) | 52.72 | 100.00 | pass |
+| 5.1 | P/E vs own median | n/a | 1.30 | unverified |
+| 5.2 | PEG | n/a | 2.00 | unverified |
+| 5 | Valuation (5.1 or 5.2) | n/a | n/a | unverified |
+
+## MOMENTUM
+
+Confirmed uptrend 131, emerging 64, pullback in uptrend 11. Ranked by score (quality 40%, growth 30%, momentum 30%). Full list: Momentum tab.
+
+| Ticker | Stage | Days in stage | Score | 50/200 cross | 6m RS pctile | % from 20DMA | Fund. rules missed | Status |
+|---|---|---|---|---|---|---|---|---|
+| [CBOE](https://finance.yahoo.com/quote/CBOE/) | Emerging | 20 | 0.69 | crossed 16 sessions ago | 43% | +9.2% | 2.4 | Lagging most other stocks over 6 months |
+| [COST](https://finance.yahoo.com/quote/COST/) | Emerging | 16 | 0.68 | 50DMA -1.0% vs 200DMA | 46% | +6.5% | 2.4,3.1,3.2,3.4 | Uptrend started too long ago for a fresh entry (US rule) |
+| [ACN](https://finance.yahoo.com/quote/ACN/) | Emerging | 23 | 0.67 | crossed 17 sessions ago | 97% | -0.2% | 2.4,2.5,3.1 | New uptrend - waiting for the right entry price |
+| [TYL](https://finance.yahoo.com/quote/TYL/) | Emerging | 23 | 0.63 | crossed 20 sessions ago | 92% | +6.9% | 2.2,2.3,2.4,3.1,3.2,3.4 | New uptrend - waiting for the right entry price |
+| [DHR](https://finance.yahoo.com/quote/DHR/) | Emerging | 44 | 0.62 | crossed 45 sessions ago | 93% | +0.3% | 2.2,2.3,2.4,2.5,3.1,3.4 | New uptrend - waiting for the right entry price |
+| [FTV](https://finance.yahoo.com/quote/FTV/) | Emerging | 10 | 0.62 | crossed 0 sessions ago | 66% | +6.6% | 2.2,2.3,2.4,2.5,2.6,3.1 | Lagging most other stocks over 6 months |
+| [PTC](https://finance.yahoo.com/quote/PTC/) | Emerging | 29 | 0.62 | crossed 26 sessions ago | 91% | +0.8% | 3.1,3.2,3.4 | New uptrend - waiting for the right entry price |
+| [STE](https://finance.yahoo.com/quote/STE/) | Emerging | 5 | 0.62 | 50DMA -0.3% vs 200DMA | 71% | +6.8% | 2.2,2.4,3.1,3.2,3.4 | Uptrend started too long ago for a fresh entry (US rule) |
+| [ADSK](https://finance.yahoo.com/quote/ADSK/) | Emerging | 7 | 0.62 | 50DMA -0.0% vs 200DMA | 56% | +2.6% | 2.5,2.6 | Uptrend started too long ago for a fresh entry (US rule) |
+| [IDXX](https://finance.yahoo.com/quote/IDXX/) | Emerging | 2 | 0.61 | 50DMA -2.3% vs 200DMA | 85% | +12.9% | 2.4,2.6,3.1,3.2,3.4 | Uptrend started too long ago for a fresh entry (US rule) |
+| [RMD](https://finance.yahoo.com/quote/RMD/) | Emerging | 7 | 0.61 | crossed 25 sessions ago | 71% | -1.2% | 3.1 | New uptrend - waiting for the right entry price |
+| [CTSH](https://finance.yahoo.com/quote/CTSH/) | Emerging | 24 | 0.60 | crossed 23 sessions ago | 91% | -3.9% | 2.4,2.5,3.1,3.4 | Still too far below its 1-year high |
+| [VEEV](https://finance.yahoo.com/quote/VEEV/) | Confirmed uptrend | 26 | 0.75 | crossed 56 sessions ago | 99% | -3.0% |  | Uptrend - waiting for the right entry price |
+| [EOG](https://finance.yahoo.com/quote/EOG/) | Confirmed uptrend | 3 | 0.75 | crossed 175 sessions ago | 67% | -0.5% | 2.4,2.5 | Uptrend started too long ago for a fresh entry (US rule) |
+| [COP](https://finance.yahoo.com/quote/COP/) | Confirmed uptrend | 2 | 0.74 | crossed 213 sessions ago | 72% | -2.7% | 2.4,2.5 | Uptrend started too long ago for a fresh entry (US rule) |
+| [APA](https://finance.yahoo.com/quote/APA/) | Confirmed uptrend | 2 | 0.74 | above for 1y+ | 83% | -1.7% | 2.4,2.5,2.6 | Uptrend started too long ago for a fresh entry (US rule) |
+| [EXPD](https://finance.yahoo.com/quote/EXPD/) | Confirmed uptrend | 2 | 0.73 | above for 1y+ | 81% | -0.1% | 2.4,2.5 | Uptrend started too long ago for a fresh entry (US rule) |
+| [MSFT](https://finance.yahoo.com/quote/MSFT/) | Confirmed uptrend | 8 | 0.72 | crossed 53 sessions ago | 81% | -1.3% |  | Uptrend - waiting for the right entry price |
+| [REGN](https://finance.yahoo.com/quote/REGN/) | Confirmed uptrend | 18 | 0.72 | crossed 49 sessions ago | 88% | +9.3% | 2.4,2.5 | Uptrend - waiting for the right entry price |
+| [ABBV](https://finance.yahoo.com/quote/ABBV/) | Confirmed uptrend | 46 | 0.72 | crossed 91 sessions ago | 92% | +1.8% | 2.3,2.4,2.5,3.1 | Uptrend started too long ago for a fresh entry (US rule) |
+| [CVX](https://finance.yahoo.com/quote/CVX/) | Confirmed uptrend | 1 | 0.72 | above for 1y+ | 71% | -3.1% | 2.3/2.10,2.4,2.5 | Uptrend started too long ago for a fresh entry (US rule) |
+| [AMD](https://finance.yahoo.com/quote/AMD/) | Confirmed uptrend | 2 | 0.71 | above for 1y+ | 83% | +12.8% | 2.2,2.3 | Uptrend started too long ago for a fresh entry (US rule) |
+| [WST](https://finance.yahoo.com/quote/WST/) | Confirmed uptrend | 37 | 0.71 | crossed 133 sessions ago | 89% | +2.5% | 2.4,2.5,3.1 | Uptrend started too long ago for a fresh entry (US rule) |
+| [XOM](https://finance.yahoo.com/quote/XOM/) | Confirmed uptrend | 1 | 0.70 | above for 1y+ | 60% | -3.4% | 2.4,2.5 | Uptrend started too long ago for a fresh entry (US rule) |
+
+## STAGE CHANGES SINCE THE LAST RUN (18)
+
+| Date | Ticker | Change | Days in previous stage |
+|---|---|---|---|
+| 2026-11-12 | [AMCR](https://finance.yahoo.com/quote/AMCR/) | Left uptrend (now stalling) | 8 |
+| 2026-11-12 | [APH](https://finance.yahoo.com/quote/APH/) | Left uptrend (now stalling) | 2 |
+| 2026-11-12 | [BEN](https://finance.yahoo.com/quote/BEN/) | Entered uptrend (Confirmed uptrend) | 23 |
+| 2026-11-12 | [CVX](https://finance.yahoo.com/quote/CVX/) | Pullback in uptrend -> Confirmed uptrend | 5 |
+| 2026-11-12 | [DVA](https://finance.yahoo.com/quote/DVA/) | Left uptrend (now stalling) | 1 |
+| 2026-11-12 | [GDDY](https://finance.yahoo.com/quote/GDDY/) | Emerging -> Confirmed uptrend | 30 |
+| 2026-11-12 | [IBM](https://finance.yahoo.com/quote/IBM/) | Entered uptrend (Emerging) | 169 |
+| 2026-11-12 | [ICE](https://finance.yahoo.com/quote/ICE/) | Emerging -> Confirmed uptrend | 10 |
+| 2026-11-12 | [KMI](https://finance.yahoo.com/quote/KMI/) | Entered uptrend (Confirmed uptrend) | 6 |
+| 2026-11-12 | [NXPI](https://finance.yahoo.com/quote/NXPI/) | Entered uptrend (Emerging) | 41 |
+| 2026-11-12 | [OMC](https://finance.yahoo.com/quote/OMC/) | Entered uptrend (Confirmed uptrend) | 39 |
+| 2026-11-12 | [ORLY](https://finance.yahoo.com/quote/ORLY/) | Entered uptrend (Emerging) | 194 |
+| 2026-11-12 | [PYPL](https://finance.yahoo.com/quote/PYPL/) | Entered uptrend (Confirmed uptrend) | 47 |
+| 2026-11-12 | [REG](https://finance.yahoo.com/quote/REG/) | Left uptrend (now downtrend) | 2 |
+| 2026-11-12 | [STLD](https://finance.yahoo.com/quote/STLD/) | Confirmed uptrend -> Pullback in uptrend | 1 |
+| 2026-11-12 | [WAB](https://finance.yahoo.com/quote/WAB/) | Entered uptrend (Confirmed uptrend) | 23 |
+| 2026-11-12 | [WFC](https://finance.yahoo.com/quote/WFC/) | Left uptrend (now stalling) | 1 |
+| 2026-11-12 | [XOM](https://finance.yahoo.com/quote/XOM/) | Pullback in uptrend -> Confirmed uptrend | 5 |
+
+## UPTREND CHANGES SINCE LAST SESSION
+
+- Entered (10): [BEN](https://finance.yahoo.com/quote/BEN/) (was stalling), [CVX](https://finance.yahoo.com/quote/CVX/) (was pullback in uptrend), [IBM](https://finance.yahoo.com/quote/IBM/) (was downtrend), [KMI](https://finance.yahoo.com/quote/KMI/) (was stalling), [NXPI](https://finance.yahoo.com/quote/NXPI/) (was downtrend), [OMC](https://finance.yahoo.com/quote/OMC/) (was stalling), [ORLY](https://finance.yahoo.com/quote/ORLY/) (was downtrend), [PYPL](https://finance.yahoo.com/quote/PYPL/) (was stalling), [WAB](https://finance.yahoo.com/quote/WAB/) (was stalling), [XOM](https://finance.yahoo.com/quote/XOM/) (was pullback in uptrend)
+- Left (5): AMCR, DVA, REG, STLD, WFC
+
+
+Report saved to /home/runner/work/quality-momentum/quality-momentum/reports/us/2026-11-12.md
