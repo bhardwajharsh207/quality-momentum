@@ -95,3 +95,6 @@ date,ticker,setup,limit,structure_low,result
 2026-11-12,ABDL.NS,pullback,795.9,676.0,no free slot (11.1)
 2026-11-12,PNB.NS,breakout,145.404,104.59,no free slot (11.1)
 2026-11-12,LICHSGFIN.NS,pullback,607.95,502.1,no free slot (11.1)
+2026-11-13,MCX.NS,breakout,3805.9349,2885.0311,BUY
+2026-11-13,PNB.NS,breakout,148.8795,109.37,BUY
+2026-11-13,LICHSGFIN.NS,pullback,614.355,523.0,7.5 already holding 2 in Financial Services
