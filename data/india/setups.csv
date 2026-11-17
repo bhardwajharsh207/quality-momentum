@@ -98,3 +98,9 @@ date,ticker,setup,limit,structure_low,result
 2026-11-13,MCX.NS,breakout,3805.9349,2885.0311,BUY
 2026-11-13,PNB.NS,breakout,148.8795,109.37,BUY
 2026-11-13,LICHSGFIN.NS,pullback,614.355,523.0,7.5 already holding 2 in Financial Services
+2026-11-16,ASAHIINDIA.NS,breakout,1165.7625,839.277,BUY
+2026-11-16,KPRMILL.NS,breakout,1248.4369,991.2,BUY
+2026-11-16,NH.NS,pullback,1990.0651,1833.0,no free slot (11.1)
+2026-11-16,PNB.NS,breakout,149.9505,109.37,no free slot (11.1)
+2026-11-16,LICHSGFIN.NS,breakout,614.355,485.2,no free slot (11.1)
+2026-11-16,NUVOCO.NS,pullback,362.7225,338.0,no free slot (11.1)

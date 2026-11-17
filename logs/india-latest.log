@@ -1,148 +1,149 @@
+
+1 Failed download:
+['RELIANCE.NS']: OperationalError('database is locked')
 HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: DUMMYHEG.NS"}}}
 $DUMMYHEG.NS: No data found, symbol may be delisted
 
 1 Failed download:
 ['DUMMYHEG.NS']: No data found, symbol may be delisted
 Downloading prices for 497 tickers ...
-Latest bar dates across universe: 2026-11-13: 495
-[Layer A] evaluating fundamentals for 477 stocks ...
-  50/477
-  100/477
-  150/477
-  200/477
-  250/477
-  300/477
-  350/477
-  400/477
-  450/477
-# INDIA Quality Momentum - signals from 2026-11-13 close
+Latest bar dates across universe: 2026-11-16: 495
+[Layer A] refreshing 3 stocks (new results or missing data) ...
+[Layer A] evaluating fundamentals for 3 stocks ...
+# INDIA Quality Momentum - signals from 2026-11-16 close
 
-Data: Yahoo Finance (yfinance), fetched 2026-11-16 13:59 IST. Universe 496 stocks; 92 in a confirmed or emerging uptrend (fundamentals refreshed today).
+Data: Yahoo Finance (yfinance), fetched 2026-11-17 15:11 IST. Universe 496 stocks; 96 in a confirmed or emerging uptrend (fundamentals cached).
 
 ## BUY (place before next open)
 
 | Ticker | Setup | Score | Last close | Limit (max) | Stop | Disaster GTT | Shares | Value |
 |---|---|---|---|---|---|---|---|---|
-| [MCX.NS](https://www.screener.in/company/MCX/) | breakout | 0.82 | ₹3,720.00 | ₹3,805.93 | ₹3,422.40 | ₹3,273.60 | 2 | ₹7,440 |
-| [PNB.NS](https://www.screener.in/company/PNB/) | breakout | 0.59 | ₹142.81 | ₹148.88 | ₹131.39 | ₹125.67 | 58 | ₹8,283 |
+| [ASAHIINDIA.NS](https://www.screener.in/company/ASAHIINDIA/) | breakout | 0.72 | ₹1,165.05 | ₹1,165.76 | ₹1,071.85 | ₹1,025.24 | 7 | ₹8,155 |
+| [KPRMILL.NS](https://www.screener.in/company/KPRMILL/) | breakout | 0.67 | ₹1,211.00 | ₹1,248.44 | ₹1,114.12 | ₹1,065.68 | 6 | ₹7,266 |
 
 Skip a buy if the stock opens above its limit (11.6). After buying, add a row to `data/india/positions.csv` with your actual fill price and the stop.
 
-### Proof: MCX.NS (Financial Services)
+### Proof: ASAHIINDIA.NS (Automobile and Auto Components)
 
-Setup: 60d base, pivot 3624.70, vol 1.6x avg.
+Setup: 95d base, pivot 1110.25, vol 3.5x avg.
 
 | Rule | Check | Value | Threshold | Result |
 |---|---|---|---|---|
-| 2.1 | Market cap | ₹94,516 cr | ₹5,000 cr | pass (scored) |
-| 2.2 | Avg ROE (financial) | 23.1% | 12.0% | pass (scored) |
-| 2.2b | Avg ROA (financial) | 9.5% | 1.2% | pass (scored) |
-| 2.4 | Sales CAGR (3y) | 67.8% | 10.0% | pass (scored) |
-| 2.5 | Profit CAGR (3y) | 107.5% | 12.0% | pass (scored) |
-| 2.7 | OCF / Net profit (cum.) | 2.15 | 0.80 | pass (scored) |
-| 3.1 | Qtr sales YoY | 114.3% | 15.0% | pass (scored) |
-| 3.2 | Qtr profit YoY | 123.7% | 20.0% | pass (scored) |
+| 2.1 | Market cap | ₹28,470 cr | ₹5,000 cr | pass (scored) |
+| 2.2 | Avg ROCE (4y) | 15.2% | 10.0% | pass (scored) |
+| 2.3 | ROCE each of last 3y | 10.6% | 8.0% | pass (scored) |
+| 2.4 | Sales CAGR (3y) | 7.0% | 10.0% | miss (scored) |
+| 2.5 | Profit CAGR (3y) | -1.9% | 12.0% | miss (scored) |
+| 2.6 | Debt / Equity | 0.56 | 0.50 | miss (scored) |
+| 2.7 | OCF / Net profit (cum.) | 1.62 | 0.80 | pass (scored) |
+| 3.1 | Qtr sales YoY | 29.1% | 15.0% | pass (scored) |
+| 3.2 | Qtr profit YoY | 197.8% | 20.0% | pass (scored) |
 | 3.3 | Profit growth acceleration | n/a | 0.0% | unverified (scored) |
+| 3.4 | Qtr EBITDA YoY | 73.2% | 15.0% | pass (scored) |
 | 4.1 | Trend stage confirmed or emerging | Confirmed uptrend | confirmed/emerging | pass |
-| 4.2 | 50DMA rising (vs 10d ago) | 3293.11 vs 3243.52 | higher | pass (scored) |
-| 4.2b | 200DMA rising (vs 20d ago) | 2892.82 vs 2788.22 | higher | pass (scored) |
-| 4.3 | 50/200 cross (fresh = tag, not a filter) | above for 1y+ | <= 30 sessions | miss (scored) |
-| 4.4 | Close / 52w low | 2.12 | 1.30 | pass (scored) |
+| 4.2 | 50DMA rising (vs 10d ago) | 964.47 vs 945.22 | higher | pass (scored) |
+| 4.2b | 200DMA rising (vs 20d ago) | 905.40 vs 903.98 | higher | pass (scored) |
+| 4.3 | 50/200 cross (fresh = tag, not a filter) | crossed 45 sessions ago | <= 30 sessions | miss (scored) |
+| 4.4 | Close / 52w low | 1.51 | 1.30 | pass (scored) |
 | 4.5 | Close / 52w high | 0.99 | 0.75 | pass (scored) |
-| 4.6 | 6m return percentile | 0.76 | 0.70 | pass (scored) |
-| 4.7 | 3m return vs benchmark | 25.6% vs 0.3% | higher | pass (scored) |
-| 5.3 | P/E (hard cap, positive EPS) | 64.17 | 100.00 | pass |
-| 5.1 | P/E vs own median | 1.37 | 1.30 | FAIL |
-| 5.2 | PEG | 0.60 | 2.00 | pass |
+| 4.6 | 6m return percentile | 0.93 | 0.70 | pass (scored) |
+| 4.7 | 3m return vs benchmark | 29.6% vs 0.4% | higher | pass (scored) |
+| 5.3 | P/E (hard cap, positive EPS) | 54.16 | 100.00 | pass |
+| 5.1 | P/E vs own median | 1.13 | 1.30 | pass |
+| 5.2 | PEG | n/a | 2.00 | unverified |
 | 5 | Valuation (5.1 or 5.2) | n/a | n/a | pass |
 
-Check manually before buying: promoter pledge < 5% and promoter holding not down > 2 pts over 4 quarters (2.8, 2.9); not in NSE ASM/GSM surveillance (1.3) ([research page](https://www.screener.in/company/MCX/)).
+Check manually before buying: promoter pledge < 5% and promoter holding not down > 2 pts over 4 quarters (2.8, 2.9); not in NSE ASM/GSM surveillance (1.3) ([research page](https://www.screener.in/company/ASAHIINDIA/)).
 
-### Proof: PNB.NS (Financial Services)
+### Proof: KPRMILL.NS (Textiles)
 
-Setup: 75d base, pivot 141.79, vol 3.0x avg.
+Setup: 95d base, pivot 1188.99, vol 2.4x avg.
 
 | Rule | Check | Value | Threshold | Result |
 |---|---|---|---|---|
-| 2.1 | Market cap | ₹165,464 cr | ₹5,000 cr | pass (scored) |
-| 2.2 | Avg ROE (financial) | 9.4% | 12.0% | miss (scored) |
-| 2.2b | Avg ROA (financial) | 0.7% | 1.2% | miss (scored) |
-| 2.4 | Sales CAGR (3y) | 10.0% | 10.0% | miss (scored) |
-| 2.5 | Profit CAGR (3y) | 76.4% | 12.0% | pass (scored) |
-| 2.7 | OCF / Net profit (cum.) | 0.86 | 0.80 | pass (scored) |
-| 3.1 | Qtr sales YoY | -5.2% | 15.0% | miss (scored) |
-| 3.2 | Qtr profit YoY | 178.2% | 20.0% | pass (scored) |
+| 2.1 | Market cap | ₹40,990 cr | ₹5,000 cr | pass (scored) |
+| 2.2 | Avg ROCE (4y) | 22.9% | 10.0% | pass (scored) |
+| 2.3 | ROCE each of last 3y | 20.0% | 8.0% | pass (scored) |
+| 2.4 | Sales CAGR (3y) | 2.3% | 10.0% | miss (scored) |
+| 2.5 | Profit CAGR (3y) | 2.1% | 12.0% | miss (scored) |
+| 2.6 | Debt / Equity | 0.10 | 0.50 | pass (scored) |
+| 2.7 | OCF / Net profit (cum.) | 1.06 | 0.80 | pass (scored) |
+| 3.1 | Qtr sales YoY | 11.0% | 15.0% | miss (scored) |
+| 3.2 | Qtr profit YoY | 62.2% | 20.0% | pass (scored) |
 | 3.3 | Profit growth acceleration | n/a | 0.0% | unverified (scored) |
+| 3.4 | Qtr EBITDA YoY | 57.9% | 15.0% | pass (scored) |
 | 4.1 | Trend stage confirmed or emerging | Confirmed uptrend | confirmed/emerging | pass |
-| 4.2 | 50DMA rising (vs 10d ago) | 119.40 vs 116.70 | higher | pass (scored) |
-| 4.2b | 200DMA rising (vs 20d ago) | 112.83 vs 112.42 | higher | pass (scored) |
-| 4.3 | 50/200 cross (fresh = tag, not a filter) | crossed 41 sessions ago | <= 30 sessions | miss (scored) |
-| 4.4 | Close / 52w low | 1.49 | 1.30 | pass (scored) |
-| 4.5 | Close / 52w high | 0.98 | 0.75 | pass (scored) |
-| 4.6 | 6m return percentile | 0.93 | 0.70 | pass (scored) |
-| 4.7 | 3m return vs benchmark | 20.0% vs 0.3% | higher | pass (scored) |
-| 5.3 | P/E (hard cap, positive EPS) | 7.19 | 100.00 | pass |
-| 5.1 | P/E vs own median | 1.24 | 1.30 | pass |
-| 5.2 | PEG | 0.09 | 2.00 | pass |
+| 4.2 | 50DMA rising (vs 10d ago) | 1112.10 vs 1107.52 | higher | pass (scored) |
+| 4.2b | 200DMA rising (vs 20d ago) | 1019.65 vs 996.37 | higher | pass (scored) |
+| 4.3 | 50/200 cross (fresh = tag, not a filter) | crossed 101 sessions ago | <= 30 sessions | miss (scored) |
+| 4.4 | Close / 52w low | 1.52 | 1.30 | pass (scored) |
+| 4.5 | Close / 52w high | 0.91 | 0.75 | pass (scored) |
+| 4.6 | 6m return percentile | 0.90 | 0.70 | pass (scored) |
+| 4.7 | 3m return vs benchmark | 11.6% vs 0.4% | higher | pass (scored) |
+| 5.3 | P/E (hard cap, positive EPS) | 39.82 | 100.00 | pass |
+| 5.1 | P/E vs own median | 1.13 | 1.30 | pass |
+| 5.2 | PEG | 18.96 | 2.00 | FAIL |
 | 5 | Valuation (5.1 or 5.2) | n/a | n/a | pass |
 
-Check manually before buying: promoter pledge < 5% and promoter holding not down > 2 pts over 4 quarters (2.8, 2.9); not in NSE ASM/GSM surveillance (1.3) ([research page](https://www.screener.in/company/PNB/)).
+Check manually before buying: promoter pledge < 5% and promoter holding not down > 2 pts over 4 quarters (2.8, 2.9); not in NSE ASM/GSM surveillance (1.3) ([research page](https://www.screener.in/company/KPRMILL/)).
 
 ## MOMENTUM
 
-Confirmed uptrend 64, emerging 28, pullback in uptrend 10. Ranked by score (quality 40%, growth 30%, momentum 30%). Full list: Momentum tab.
+Confirmed uptrend 68, emerging 28, pullback in uptrend 8. Ranked by score (quality 40%, growth 30%, momentum 30%). Full list: Momentum tab.
 
 | Ticker | Stage | Days in stage | Score | 50/200 cross | 6m RS pctile | % from 20DMA | Fund. rules missed | Status |
 |---|---|---|---|---|---|---|---|---|
-| [UNOMINDA.NS](https://www.screener.in/company/UNOMINDA/) | Emerging | 1 | 0.72 | crossed 55 sessions ago | 83% | +18.0% |  | New uptrend - waiting for the right entry price |
-| [IGIL.NS](https://www.screener.in/company/IGIL/) | Emerging | 12 | 0.72 | crossed 5 sessions ago | 90% | +13.2% | 2.3/2.10 | New uptrend - waiting for the right entry price |
-| [ASAHIINDIA.NS](https://www.screener.in/company/ASAHIINDIA/) | Emerging | 6 | 0.71 | crossed 44 sessions ago | 90% | +14.7% | 2.4,2.5,2.6 | New uptrend - waiting for the right entry price |
-| [BSE.NS](https://www.screener.in/company/BSE/) | Emerging | 7 | 0.70 | 50DMA -0.8% vs 200DMA | 49% | +10.8% |  | New uptrend - waiting for the right entry price |
-| [LTTS.NS](https://www.screener.in/company/LTTS/) | Emerging | 16 | 0.69 | crossed 10 sessions ago | 82% | +4.2% | 2.4,2.5,3.1,3.4 | New uptrend - waiting for the right entry price |
-| [PERSISTENT.NS](https://www.screener.in/company/PERSISTENT/) | Emerging | 24 | 0.68 | crossed 39 sessions ago | 83% | +1.3% | 3.2,3.4 | New uptrend - waiting for the right entry price |
-| [BHARTIARTL.NS](https://www.screener.in/company/BHARTIARTL/) | Emerging | 8 | 0.66 | crossed 2 sessions ago | 80% | +5.9% | 2.6 | New uptrend - waiting for the right entry price |
-| [HCLTECH.NS](https://www.screener.in/company/HCLTECH/) | Emerging | 14 | 0.65 | crossed 6 sessions ago | 82% | -2.1% | 2.4,2.5 | New uptrend - waiting for the right entry price |
-| [ITCHOTELS.NS](https://www.screener.in/company/ITCHOTELS/) | Emerging | 7 | 0.64 | 50DMA -1.6% vs 200DMA | 71% | +3.6% | 2.2 | New uptrend - waiting for the right entry price |
-| [BHARTIHEXA.NS](https://www.screener.in/company/BHARTIHEXA/) | Emerging | 15 | 0.63 | crossed 6 sessions ago | 72% | +0.8% | 2.6,3.1 | New uptrend - waiting for the right entry price |
-| [TARIL.NS](https://www.screener.in/company/TARIL/) | Emerging | 9 | 0.62 | 50DMA -0.6% vs 200DMA | 49% | +0.3% | 2.7 | New uptrend - waiting for the right entry price |
-| [SUNTV.NS](https://www.screener.in/company/SUNTV/) | Emerging | 14 | 0.62 | crossed 6 sessions ago | 82% | +5.3% | 2.4,2.5,3.1,3.2,3.4 | New uptrend - waiting for the right entry price |
-| [MCX.NS](https://www.screener.in/company/MCX/) | Confirmed uptrend | 8 | 0.82 | above for 1y+ | 76% | +12.5% |  | Buy signal today - broke out |
-| [DIVISLAB.NS](https://www.screener.in/company/DIVISLAB/) | Confirmed uptrend | 13 | 0.81 | crossed 122 sessions ago | 98% | +15.3% |  | Too expensive versus its own history |
-| [COFORGE.NS](https://www.screener.in/company/COFORGE/) | Confirmed uptrend | 17 | 0.80 | crossed 65 sessions ago | 97% | +1.3% |  | Uptrend - waiting for the right entry price |
-| [SONACOMS.NS](https://www.screener.in/company/SONACOMS/) | Confirmed uptrend | 11 | 0.80 | crossed 226 sessions ago | 97% | +7.1% |  | Too expensive versus its own history |
-| [ACUTAAS.NS](https://www.screener.in/company/ACUTAAS/) | Confirmed uptrend | 13 | 0.80 | above for 1y+ | 93% | +10.8% |  | Uptrend - waiting for the right entry price |
-| [CUPID.NS](https://www.screener.in/company/CUPID/) | Confirmed uptrend | 35 | 0.78 | above for 1y+ | 100% | +11.9% | 2.7 | No profits, or P/E over 100 |
-| [APLAPOLLO.NS](https://www.screener.in/company/APLAPOLLO/) | Confirmed uptrend | 7 | 0.78 | crossed 48 sessions ago | 80% | +4.3% |  | Uptrend - waiting for the right entry price |
-| [SAILIFE.NS](https://www.screener.in/company/SAILIFE/) | Confirmed uptrend | 10 | 0.77 | above for 1y+ | 98% | +22.6% |  | No profits, or P/E over 100 |
-| [NAVINFLUOR.NS](https://www.screener.in/company/NAVINFLUOR/) | Confirmed uptrend | 7 | 0.77 | above for 1y+ | 94% | +16.5% |  | Uptrend - waiting for the right entry price |
-| [ETERNAL.NS](https://www.screener.in/company/ETERNAL/) | Confirmed uptrend | 14 | 0.76 | crossed 67 sessions ago | 96% | +7.3% | 2.2,2.3 | No profits, or P/E over 100 |
-| [CPPLUS.NS](https://www.screener.in/company/CPPLUS/) | Confirmed uptrend | 30 | 0.76 | above for 1y+ | 97% | +3.4% | 2.7 | Uptrend - waiting for the right entry price |
-| [SHYAMMETL.NS](https://www.screener.in/company/SHYAMMETL/) | Confirmed uptrend | 27 | 0.76 | crossed 111 sessions ago | 96% | +8.2% | 2.3/2.10,2.5 | Uptrend - waiting for the right entry price |
+| [IGIL.NS](https://www.screener.in/company/IGIL/) | Emerging | 13 | 0.72 | crossed 6 sessions ago | 90% | +10.3% | 2.3/2.10 | New uptrend - waiting for the right entry price |
+| [UNOMINDA.NS](https://www.screener.in/company/UNOMINDA/) | Emerging | 2 | 0.71 | crossed 56 sessions ago | 82% | +13.5% |  | New uptrend - waiting for the right entry price |
+| [PERSISTENT.NS](https://www.screener.in/company/PERSISTENT/) | Emerging | 25 | 0.69 | crossed 40 sessions ago | 87% | +0.8% | 3.2,3.4 | New uptrend - waiting for the right entry price |
+| [BSE.NS](https://www.screener.in/company/BSE/) | Emerging | 8 | 0.69 | 50DMA -0.6% vs 200DMA | 43% | +8.7% |  | New uptrend - waiting for the right entry price |
+| [LTTS.NS](https://www.screener.in/company/LTTS/) | Emerging | 17 | 0.68 | crossed 11 sessions ago | 83% | +3.0% | 2.4,2.5,3.1,3.4 | New uptrend - waiting for the right entry price |
+| [BHARTIARTL.NS](https://www.screener.in/company/BHARTIARTL/) | Emerging | 9 | 0.67 | crossed 3 sessions ago | 77% | +7.5% | 2.6 | New uptrend - waiting for the right entry price |
+| [HCLTECH.NS](https://www.screener.in/company/HCLTECH/) | Emerging | 15 | 0.66 | crossed 7 sessions ago | 84% | -1.8% | 2.4,2.5 | New uptrend - waiting for the right entry price |
+| [ITCHOTELS.NS](https://www.screener.in/company/ITCHOTELS/) | Emerging | 8 | 0.65 | 50DMA -1.4% vs 200DMA | 74% | +3.5% | 2.2 | New uptrend - waiting for the right entry price |
+| [TARIL.NS](https://www.screener.in/company/TARIL/) | Emerging | 10 | 0.64 | 50DMA -0.7% vs 200DMA | 52% | -1.2% | 2.7 | New uptrend - waiting for the right entry price |
+| [BHARTIHEXA.NS](https://www.screener.in/company/BHARTIHEXA/) | Emerging | 16 | 0.64 | crossed 7 sessions ago | 76% | +3.3% | 2.6,3.1 | New uptrend - waiting for the right entry price |
+| [SUNTV.NS](https://www.screener.in/company/SUNTV/) | Emerging | 15 | 0.63 | crossed 7 sessions ago | 85% | +6.9% | 2.4,2.5,3.1,3.2,3.4 | New uptrend - waiting for the right entry price |
+| [NH.NS](https://www.screener.in/company/NH/) | Emerging | 2 | 0.62 | 50DMA -1.4% vs 200DMA | 57% | +5.7% | 2.5,2.6,3.2 | Buy signal today - bounced off its 50-day line |
+| [MCX.NS](https://www.screener.in/company/MCX/) | Confirmed uptrend | 9 | 0.82 | above for 1y+ | 72% | +11.9% |  | Uptrend - waiting for the right entry price |
+| [DIVISLAB.NS](https://www.screener.in/company/DIVISLAB/) | Confirmed uptrend | 14 | 0.81 | crossed 123 sessions ago | 98% | +10.5% |  | Too expensive versus its own history |
+| [COFORGE.NS](https://www.screener.in/company/COFORGE/) | Confirmed uptrend | 18 | 0.80 | crossed 66 sessions ago | 97% | +0.2% |  | Uptrend - waiting for the right entry price |
+| [ACUTAAS.NS](https://www.screener.in/company/ACUTAAS/) | Confirmed uptrend | 14 | 0.80 | above for 1y+ | 95% | +7.1% |  | Uptrend - waiting for the right entry price |
+| [SONACOMS.NS](https://www.screener.in/company/SONACOMS/) | Confirmed uptrend | 12 | 0.79 | crossed 227 sessions ago | 96% | +4.2% |  | Too expensive versus its own history |
+| [APLAPOLLO.NS](https://www.screener.in/company/APLAPOLLO/) | Confirmed uptrend | 8 | 0.77 | crossed 49 sessions ago | 81% | +4.0% |  | Uptrend - waiting for the right entry price |
+| [ETERNAL.NS](https://www.screener.in/company/ETERNAL/) | Confirmed uptrend | 15 | 0.77 | crossed 68 sessions ago | 96% | +8.7% | 2.2,2.3 | No profits, or P/E over 100 |
+| [CUPID.NS](https://www.screener.in/company/CUPID/) | Confirmed uptrend | 36 | 0.77 | above for 1y+ | 100% | +7.0% | 2.7 | No profits, or P/E over 100 |
+| [NAVINFLUOR.NS](https://www.screener.in/company/NAVINFLUOR/) | Confirmed uptrend | 8 | 0.76 | above for 1y+ | 95% | +14.1% |  | Uptrend - waiting for the right entry price |
+| [SANSERA.NS](https://www.screener.in/company/SANSERA/) | Confirmed uptrend | 10 | 0.76 | above for 1y+ | 100% | +10.3% |  | Too expensive versus its own history |
+| [SHYAMMETL.NS](https://www.screener.in/company/SHYAMMETL/) | Confirmed uptrend | 28 | 0.76 | crossed 112 sessions ago | 96% | +7.5% | 2.3/2.10,2.5 | Uptrend - waiting for the right entry price |
+| [SAILIFE.NS](https://www.screener.in/company/SAILIFE/) | Confirmed uptrend | 11 | 0.75 | above for 1y+ | 98% | +13.0% |  | No profits, or P/E over 100 |
 
-## STAGE CHANGES SINCE THE LAST RUN (11)
+## STAGE CHANGES SINCE THE LAST RUN (10)
 
 | Date | Ticker | Change | Days in previous stage |
 |---|---|---|---|
-| 2026-11-13 | [ABBOTINDIA.NS](https://www.screener.in/company/ABBOTINDIA/) | Entered uptrend (Emerging) | 14 |
-| 2026-11-13 | [ACMESOLAR.NS](https://www.screener.in/company/ACMESOLAR/) | Confirmed uptrend -> Pullback in uptrend | 2 |
-| 2026-11-13 | [AIIL.NS](https://www.screener.in/company/AIIL/) | Entered uptrend (Emerging) | 17 |
-| 2026-11-13 | [ANTHEM.NS](https://www.screener.in/company/ANTHEM/) | Entered uptrend (Confirmed uptrend) | 13 |
-| 2026-11-13 | [GESHIP.NS](https://www.screener.in/company/GESHIP/) | Pullback in uptrend -> Confirmed uptrend | 5 |
-| 2026-11-13 | [HAL.NS](https://www.screener.in/company/HAL/) | Entered uptrend (Pullback in uptrend) | 10 |
-| 2026-11-13 | [INDIGO.NS](https://www.screener.in/company/INDIGO/) | Emerging -> Confirmed uptrend | 1 |
-| 2026-11-13 | [NH.NS](https://www.screener.in/company/NH/) | Entered uptrend (Emerging) | 21 |
-| 2026-11-13 | [TVSMOTOR.NS](https://www.screener.in/company/TVSMOTOR/) | Entered uptrend (Confirmed uptrend) | 20 |
-| 2026-11-13 | [UNOMINDA.NS](https://www.screener.in/company/UNOMINDA/) | Entered uptrend (Emerging) | 32 |
-| 2026-11-13 | [WOCKPHARMA.NS](https://www.screener.in/company/WOCKPHARMA/) | Confirmed uptrend -> Pullback in uptrend | 3 |
+| 2026-11-16 | [ABBOTINDIA.NS](https://www.screener.in/company/ABBOTINDIA/) | Left uptrend (now downtrend) | 1 |
+| 2026-11-16 | [ASAHIINDIA.NS](https://www.screener.in/company/ASAHIINDIA/) | Emerging -> Confirmed uptrend | 6 |
+| 2026-11-16 | [HONASA.NS](https://www.screener.in/company/HONASA/) | Entered uptrend (Confirmed uptrend) | 16 |
+| 2026-11-16 | [IPCALAB.NS](https://www.screener.in/company/IPCALAB/) | Left uptrend (now stalling) | 3 |
+| 2026-11-16 | [KALYANKJIL.NS](https://www.screener.in/company/KALYANKJIL/) | Entered uptrend (Confirmed uptrend) | 26 |
+| 2026-11-16 | [LICHSGFIN.NS](https://www.screener.in/company/LICHSGFIN/) | Emerging -> Confirmed uptrend | 5 |
+| 2026-11-16 | [LT.NS](https://www.screener.in/company/LT/) | Entered uptrend (Emerging) | 23 |
+| 2026-11-16 | [MGL.NS](https://www.screener.in/company/MGL/) | Entered uptrend (Emerging) | 15 |
+| 2026-11-16 | [POONAWALLA.NS](https://www.screener.in/company/POONAWALLA/) | Entered uptrend (Emerging) | 51 |
+| 2026-11-16 | [WELCORP.NS](https://www.screener.in/company/WELCORP/) | Left uptrend (now stalling) | 11 |
 
 ## UPTREND CHANGES SINCE LAST SESSION
 
-- Entered (7): [ABBOTINDIA.NS](https://www.screener.in/company/ABBOTINDIA/) (was downtrend), [AIIL.NS](https://www.screener.in/company/AIIL/) (was stalling), [ANTHEM.NS](https://www.screener.in/company/ANTHEM/) (was stalling), [GESHIP.NS](https://www.screener.in/company/GESHIP/) (was pullback in uptrend), [NH.NS](https://www.screener.in/company/NH/) (was downtrend), [TVSMOTOR.NS](https://www.screener.in/company/TVSMOTOR/) (was stalling), [UNOMINDA.NS](https://www.screener.in/company/UNOMINDA/) (was stalling)
-- Left (2): ACMESOLAR.NS, WOCKPHARMA.NS
+- Entered (5): [HONASA.NS](https://www.screener.in/company/HONASA/) (was stalling), [KALYANKJIL.NS](https://www.screener.in/company/KALYANKJIL/) (was stalling), [LT.NS](https://www.screener.in/company/LT/) (was downtrend), [MGL.NS](https://www.screener.in/company/MGL/) (was downtrend), [POONAWALLA.NS](https://www.screener.in/company/POONAWALLA/) (was stalling)
+- Left (1): ABBOTINDIA.NS
 
 ## Signals without a slot (logged to missed.csv)
 
-- LICHSGFIN.NS (pullback, score 0.503): 7.5 already holding 2 in Financial Services
+- NH.NS (pullback, score 0.622): no free slot (11.1)
+- PNB.NS (breakout, score 0.591): no free slot (11.1)
+- LICHSGFIN.NS (breakout, score 0.527): no free slot (11.1)
+- NUVOCO.NS (pullback, score 0.434): no free slot (11.1)
 
 
-Report saved to /home/runner/work/quality-momentum/quality-momentum/reports/india/2026-11-13.md
+Report saved to /home/runner/work/quality-momentum/quality-momentum/reports/india/2026-11-16.md
