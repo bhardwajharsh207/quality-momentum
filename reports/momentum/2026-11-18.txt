@@ -1,0 +1,29 @@
+Bullish momentum (INDIA 2026-11-17, US 2026-11-18)
+
+INDIA: NEW MOMENTUM
+  IGIL           Emerging, uptrend 14 days    Near breakout ₹454
+  UNOMINDA       Emerging, uptrend 68 days    Near breakout ₹1,406
+  BSE            Emerging, uptrend 9 days     Near breakout ₹3,938
+  LTTS           Emerging, uptrend 18 days    Buy zone (20-day avg ₹3,645)
+  PERSISTENT     Emerging, uptrend 45 days    Wait: above ₹6,110 or dip to ₹5,687
+
+INDIA: ONGOING MOMENTUM
+  MCX            Confirmed, uptrend 276 days  Still buyable to ₹3,806
+  DIVISLAB       Confirmed, uptrend 142 days  Wait: above ₹11,824 or dip to ₹9,663
+  COFORGE        Confirmed, uptrend 75 days   Buy zone (20-day avg ₹1,911)
+  ACE            Confirmed, uptrend 95 days   Buy zone (50-day avg ₹1,149)
+  SONACOMS       Confirmed, uptrend 230 days  Wait: above ₹926 or dip to ₹829
+
+US: NEW MOMENTUM
+  COST           Emerging, uptrend 20 days    Watch only (lagging)
+  CBOE           Emerging, uptrend 24 days    Watch only (lagging)
+  LUV            Emerging, uptrend 3 days     Watch for golden cross
+  STE            Emerging, uptrend 9 days     Near breakout $264
+  ACN            Emerging, uptrend 27 days    Wait: above $272 or dip to $219
+
+US: ONGOING MOMENTUM
+  REGN           Confirmed, uptrend 61 days   Wait: above $992 or dip to $824
+  CPAY           Confirmed, uptrend 199 days  Watch only (US: trend too old)
+  MET            Confirmed, uptrend 128 days  Watch only (US: trend too old)
+  OMC            Confirmed, uptrend 94 days   Watch only (US: trend too old)
+  WST            Confirmed, uptrend 151 days  Watch only (US: trend too old)

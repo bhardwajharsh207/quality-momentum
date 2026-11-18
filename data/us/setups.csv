@@ -47,3 +47,5 @@ date,ticker,setup,limit,structure_low,result
 2026-11-12,J,pullback20,166.6245,144.55,BUY
 2026-11-13,COR,pullback,376.9815,332.0416,BUY
 2026-11-16,DG,pullback20,142.989,133.0,BUY
+2026-11-18,RMD,pullback,254.7405,229.3636,BUY
+2026-11-18,DIS,breakout,125.6325,92.49,BUY
