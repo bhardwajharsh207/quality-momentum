@@ -52,3 +52,16 @@ date,ticker,setup,limit,structure_low,result
 2026-11-20,HCA,pullback,499.3485,459.3,BUY
 2026-11-20,BRO,pullback20,76.7235,71.09,BUY
 2026-11-23,MTD,pullback20,1811.796,1664.92,8.6 position size below 1 share
+2026-11-24,REGN,pullback20,1036.4445,916.33,8.6 position size below 1 share
+2026-11-24,MCK,pullback20,1131.9945,1042.86,8.6 position size below 1 share
+2026-11-24,ACN,pullback,243.936,216.13,BUY
+2026-11-24,RMD,pullback,255.612,233.42,BUY
+2026-11-24,TYL,pullback20,433.1145,398.81,no free slot (11.1)
+2026-11-24,DHR,pullback,240.5445,219.92,no free slot (11.1)
+2026-11-24,JKHY,pullback20,186.207,168.52,no free slot (11.1)
+2026-11-24,ULTA,pullback,673.05,613.3,no free slot (11.1)
+2026-11-24,BRO,pullback20,79.8105,71.2,no free slot (11.1)
+2026-11-24,RCL,pullback20,334.1835,295.22,no free slot (11.1)
+2026-11-24,GEHC,pullback20,86.646,80.29,no free slot (11.1)
+2026-11-24,DG,pullback,145.5825,130.31,no free slot (11.1)
+2026-11-24,VRSK,pullback20,214.1685,193.67,no free slot (11.1)

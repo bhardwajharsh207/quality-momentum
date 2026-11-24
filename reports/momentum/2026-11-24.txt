@@ -1,0 +1,29 @@
+Bullish momentum (INDIA 2026-11-23, US 2026-11-24)
+
+INDIA: NEW MOMENTUM
+  IGIL           Emerging, uptrend 18 days    Buy zone (20-day avg ₹358)
+  PERSISTENT     Emerging, uptrend 49 days    Setup skipped: all position slots are full
+  LTTS           Emerging, uptrend 22 days    Setup skipped: all position slots are full
+  ITCHOTELS      Emerging, uptrend 13 days    Near breakout ₹187
+  BHARTIARTL     Emerging, uptrend 14 days    Wait: above ₹2,154 or dip to ₹1,915
+
+INDIA: ONGOING MOMENTUM
+  COFORGE        Confirmed, uptrend 79 days   BUY at or below ₹2,204
+  DIVISLAB       Confirmed, uptrend 146 days  Wait: above ₹11,824 or dip to ₹9,811
+  MCX            Confirmed, uptrend 276 days  Wait: above ₹3,730 or dip to ₹3,335
+  SONACOMS       Confirmed, uptrend 234 days  Wait: above ₹926 or dip to ₹836
+  ACUTAAS        Confirmed, uptrend 276 days  Buy zone (20-day avg ₹3,476)
+
+US: NEW MOMENTUM
+  COST           Emerging, uptrend 24 days    Watch only (lagging)
+  CBOE           Emerging, uptrend 28 days    Watch only (lagging)
+  STE            Emerging, uptrend 13 days    Near breakout $264
+  ACN            Emerging, uptrend 31 days    BUY at or below $244
+  YUM            Emerging, uptrend 5 days     Watch for golden cross
+
+US: ONGOING MOMENTUM
+  REGN           Confirmed, uptrend 65 days   Setup skipped: one share costs more than a position slot
+  EXPD           Confirmed, uptrend 282 days  Watch only (US: trend too old)
+  ABBV           Confirmed, uptrend 110 days  Watch only (US: trend too old)
+  DIS            Confirmed, uptrend 47 days   Still buyable to $126
+  CPAY           Confirmed, uptrend 203 days  Watch only (US: trend too old)
