@@ -75,3 +75,7 @@ date,ticker,setup,limit,structure_low,result
 2026-11-25,GEHC,pullback20,87.4965,80.29,no free slot (11.1)
 2026-11-25,ERIE,pullback20,293.811,267.77,no free slot (11.1)
 2026-11-25,UHS,pullback,200.0985,174.26,no free slot (11.1)
+2026-11-27,ICE,pullback20,187.4145,169.75,BUY
+2026-11-27,HCA,pullback,526.0185,459.3,BUY
+2026-11-27,GEHC,pullback20,88.851,80.29,no free slot (11.1)
+2026-11-27,UHS,pullback,202.608,174.26,no free slot (11.1)
